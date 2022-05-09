@@ -8,6 +8,9 @@ python model.py
 #convert to PLINK format. skipping splitting data step for now
 plink2 --double-id --make-pgen --out convert_2_pgen_test --vcf output_geno.vcf.gz
 
+
+
+#START skip here for just running a GWAS without anything filtered
 #just copying their filter rare variants step
 # plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen_test --write-snplist
 plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen_test --write-snplist allow-dups
@@ -22,6 +25,9 @@ plink2 --pfile convert_2_pgen_test --extract common_variants_filter.snplist --pc
 #rare variants PCA according to their format:
 plink2 --pfile convert_2_pgen_test --extract rare_variants_filter.snplist --pca --out rare_PCA 
 
+
+
+###########END skip
 #their step again: calculate allele frequencies:
 #And now it seems they went back and calculated allele frequencies for everything by just making a snplist of EVERYTHING, no variants filtered, then just running freq on it: 
 plink2 --pfile convert_2_pgen_test --mac 1 --write-snplist allow-dups --out convert_2_pgen_test.snps
