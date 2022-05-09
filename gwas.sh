@@ -5,6 +5,10 @@
 #3. output file prefix
 #4. (if correction required) eigenvector file
 
+
+#had to manually cut the ID column from the frq.afreq file to try to correct for "Error: --read-freq variant ID '.' appears multiple times in main dataset", due to tskit's write_vcf not giving position names, they're all " . "
+cut --complement f2 convert_2_pgen_test.snps.frq.afreq #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+
 #exit w/ incorrect arguments if there are less than 3 provided (eigenvector file is optional)
 if [ "$#" -lt 3  ]; then
     echo "usage: bash gwas.sh <path to pgen genotype file - prefix> <path to phenotype file> <path to output file> <eigenvector file - optional>"
@@ -20,11 +24,13 @@ eigenvec_file=${4}
 if [ "$#" == 3 ];
 then
   plink2 --pfile ${geno_file_prefix} \
-  --read-freq ${geno_file_prefix}.frq.afreq \
+  --read-freq ${geno_file_prefix}.frq.afreq \ 
   --glm hide-covar \
   --pheno ${phenotype_file} \
   --out ${output_file_prefix}
   #--memory 7000 ###########WAS GETTING AN ERROR ON LAPTOP ABOUT MEMORY, TEMP WORKAROUND
+  #I'm having issues where my frq.afreq and pfile have different prefixes (convert_2_pgen_test vs convert_2_pgen_test.snps, so tried using: plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno pop.txt --out gwas )
+
 fi
 
 if [ "$#" == 4 ];
