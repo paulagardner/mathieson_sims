@@ -24,7 +24,7 @@ then
   --glm hide-covar \
   --pheno ${phenotype_file} \
   --out ${output_file_prefix}
-  --memory 7000 ###########WAS GETTING AN ERROR ON LAPTOP ABOUT MEMORY, TEMP WORKAROUND
+  #--memory 7000 ###########WAS GETTING AN ERROR ON LAPTOP ABOUT MEMORY, TEMP WORKAROUND
 fi
 
 if [ "$#" == 4 ];
