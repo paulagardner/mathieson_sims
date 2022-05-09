@@ -2,10 +2,10 @@
 # following the 'noge' version of their phenotypes to make an environmental effect
 # https://github.com/Arslan-Zaidi/popstructure/blob/master/code/gwas/grid/tau100/scripts/simphenotype/simphenotype_noge.R
 
-# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # hardcoding it in-- this means that the shell script will not need to take in args
 popfile <- "test.pop"
-outputfile <- "test_phenotype_simulation.txt"
+# outputfile <- "test_phenotype_simulation.txt"
 
 # install.packages("tidyverse") #based on suggestion here: https://stackoverflow.com/questions/52284128/no-fread-function
 # install.packages("data.table", INSTALL_opts = c('--no-lock'))
@@ -44,4 +44,4 @@ print(pop)
 # may instead need to write as a .txt file to match the downstream
 
 pop <- pop[, c("FID", "IID", "random")] # same as above-confused as to how I'll be able to do things w/o the deme ID but phenotype has to be the third column, apparently, so...
-write.table(pop, "pop.txt", append = FALSE, sep = "\t", col.names = TRUE)
+write.table(pop, "pop.txt", append = FALSE, quote = FALSE, sep = "\t", col.names = TRUE)
