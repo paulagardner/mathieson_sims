@@ -1,12 +1,17 @@
 #!/usr/bin/env Rscript
-#also, in terminal: chmod +x no_ge_test.r
+# chmod +x script.r
+
 
 # generate phenotypes for doing a gwas. make them non-heritable: effect is entirely due to environment
 # following the 'noge' version of their phenotypes to make an environmental effect
 # https://github.com/Arslan-Zaidi/popstructure/blob/master/code/gwas/grid/tau100/scripts/simphenotype/simphenotype_noge.R
 
-#setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) #commenting this out for use on the command line
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # hardcoding it in-- this means that the shell script will not need to take in args
+
+
+# ! /home/pdgardne/miniconda3/envs/mathieson_sims/bin/Rscriptf390709a8f9cb39bbf0845e66eff4c19803fd405
+
 popfile <- "test.pop"
 # outputfile <- "test_phenotype_simulation.txt"
 
@@ -31,15 +36,16 @@ popfile <- "test.pop"
 # the R file on github that I'm following makes a couple of different phenotypes with no genetic basis
 # and puts them in different columns. Just doing one, completely random one for now
 pop <- read.csv(popfile, sep = "\t", )
-pop
+# pop
 colnames(pop) <- c("FID", "IID", "deme")
-pop
+# pop
 demes <- unique(pop$deme)
 pop$random <- rnorm(nrow(pop), mean = 0, sd = 1)
 
-# pop=pop[,c("FID","IID","random")] #they remove the deme ids but I think I want them to be able to do the GWAS by deme????
+# pop$random <-
 
-print(pop)
+
+# print(pop)
 
 
 # write.csv(pop, file = 'pop.csv')
@@ -47,5 +53,5 @@ print(pop)
 # may instead need to write as a .txt file to match the downstream
 
 pop <- pop[, c("FID", "IID", "random")] # same as above-confused as to how I'll be able to do things w/o the deme ID but phenotype has to be the third column, apparently, so...
-pop
+print(head(pop))
 write.table(pop, "pop.txt", append = FALSE, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
