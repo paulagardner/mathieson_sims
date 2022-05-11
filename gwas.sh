@@ -7,7 +7,14 @@
 
 
 #had to manually cut the ID column from the frq.afreq file to try to correct for "Error: --read-freq variant ID '.' appears multiple times in main dataset", due to tskit's write_vcf not giving position names, they're all " . "
-cut --complement f2 convert_2_pgen_test.snps.frq.afreq #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+cut --complement -f2 convert_2_pgen_test.snps.frq.afreq #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+
+
+plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno pop.txt --out gwas
+
+
+
+
 
 #exit w/ incorrect arguments if there are less than 3 provided (eigenvector file is optional)
 if [ "$#" -lt 3  ]; then

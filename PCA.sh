@@ -8,7 +8,10 @@ python model.py
 
 #have this also in the gwas.sh file
 #had to manually cut the ID column from the frq.afreq file to try to correct for "Error: --read-freq variant ID '.' appears multiple times in main dataset", due to tskit's write_vcf not giving position names, they're all " . "
-cut --complement f2 output_geno.vcf.gz #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+#first, unzip
+gunzip output_geno.vcf.gz 
+#now do it
+cut --complement -f3 output_geno.vcf #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
 
 
 #convert to PLINK format. skipping splitting data step for now
