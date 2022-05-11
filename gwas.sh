@@ -7,12 +7,19 @@
 
 
 #had to manually cut the ID column from the frq.afreq file to try to correct for "Error: --read-freq variant ID '.' appears multiple times in main dataset", due to tskit's write_vcf not giving position names, they're all " . "
-cut --complement -f2 convert_2_pgen_test.snps.frq.afreq #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+#cut --complement --field=2 convert_2_pgen_test.snps.frq.afreq  #from https://unix.stackexchange.com/questions/222121/how-to-remove-a-column-or-multiple-columns-from-file-using-shell-command. You'd use a flag for space delimited files
+    
+#saving it: 
+# echo "$(awk '{cut --complement -f2 convert_2_pgen_test.snps.frq.afreq}' convert_2_pgen_test.snps.frq.afreq)" > convert_2_pgen_test.snps.frq.afreq #https://stackoverflow.com/questions/14660079/how-to-save-the-output-of-this-awk-command-to-file
+# plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq2 --glm hide-covar --pheno pop.txt --out gwas
 
 
-plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno pop.txt --out gwas
+# cat convert_2_pgen_test.snps.frq.afreq | cut --complement -f2 > list.txt #trying this #this worked (thank Skylar!) but the gwas is not happy with not having an ID column
 
-
+# plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno test.txt --out gwas
+plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno pop.txt --out gwas #"Error: --read-freq variant ID '.' appears multiple times in main dataset."
+plink2 --pfile convert_2_pgen_test --read-freq list.txt --glm hide-covar --pheno pop.txt --out gwas #"Error: Missing column(s) in --read-freq file (ID, REF, ALT[1] usually required).""
+#didn't work, says I need ID column. Maybe try replacing with 'NA'? 
 
 
 
