@@ -1,0 +1,17 @@
+description:
+  simple model w/o migration of a population split with even pop sizes
+time_units: generations
+defaults:
+  epoch:
+    start_size: 1000
+demes:
+  - name: A
+  - name: B
+
+migrations:
+  - source: A
+    dest: B
+    rate: 1e-3
+  - source: B
+    dest: A
+    rate: 1e-3
