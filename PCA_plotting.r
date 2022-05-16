@@ -1,4 +1,7 @@
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#!/usr/bin/env Rscript
+#chmod +x script.r
+
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # https://stackoverflow.com/questions/3452086/getting-path-of-an-r-script/35842176#35842176
 
 ret_pca <- read.table("common_PCA.eigenvec")
@@ -48,3 +51,5 @@ library(ggplot2)
 plot <- ggplot(ret_pca, aes(x = V3, y = V4, color = deme_id)) +
     geom_point()
 plot
+
+ggsave("common_PCA_plot.jpg", plot = plot)
