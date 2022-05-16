@@ -18,7 +18,7 @@
 
 # plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno test.txt --out gwas
 plink2 --pfile convert_2_pgen_test --read-freq convert_2_pgen_test.snps.frq.afreq --glm hide-covar --pheno pop.txt --out gwas #"Error: --read-freq variant ID '.' appears multiple times in main dataset."
-plink2 --pfile convert_2_pgen_test --read-freq list.txt --glm hide-covar --pheno pop.txt --out gwas #"Error: Missing column(s) in --read-freq file (ID, REF, ALT[1] usually required).""
+#plink2 --pfile convert_2_pgen_test --read-freq list.txt --glm hide-covar --pheno pop.txt --out gwas #"Error: Missing column(s) in --read-freq file (ID, REF, ALT[1] usually required).""
 #didn't work, says I need ID column. Maybe try replacing with 'NA'? 
 
 

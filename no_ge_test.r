@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+
 # chmod +x script.r
 
 
@@ -6,7 +7,7 @@
 # following the 'noge' version of their phenotypes to make an environmental effect
 # https://github.com/Arslan-Zaidi/popstructure/blob/master/code/gwas/grid/tau100/scripts/simphenotype/simphenotype_noge.R
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # hardcoding it in-- this means that the shell script will not need to take in args
 
 
