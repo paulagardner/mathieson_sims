@@ -17,7 +17,7 @@ import demes
 graph = demes.load("no_ancestry.yaml")
 
 def simulate(mu, rho, graph):
-    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length =1000, samples={"A": 50, "B": 50}) 
+    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length =1000, samples={"A": 50, "B": 50}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what they did (defining which demes are next to each other) not necessary here.. I think! at least for now
 
     mts = msprime.sim_mutations(ts, rate = mu)
@@ -109,13 +109,14 @@ print("checking why valueerror: all arrays must be of the same length")
 print(len(fid))
 print(len(iid))
 print(len(deme_id))
+
+print("writing pop file: FID, IID, deme ids for each individual")
 popdf=pd.DataFrame({"FID":fid,
                   "IID":iid,
                   "POP":deme_id})
 
-print(popdf)
+#print(popdf)
 
-print("writing pop file- deme ids for each individual")
 popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 # popdf.to_csv("test"+".pop",sep="\t")
 
@@ -133,5 +134,25 @@ popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 
 
 
+print("simulating phenotype")
+print(popdf)
+
+import scipy
+from scipy import stats
+from scipy.stats import norm
+from scipy.stats import multivariate_normal
+import numpy as np
+
+np.random.seed(10)
+random = norm.rvs(0, 1, (len(iid)))
+mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
+
+
+#random = scipy.stats.norm(0) #start with simulating a random gaussian
+#popdf["phenotype"] = random
+popdf["phenotype2"] = mult_random
+
+print(popdf)
+popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
 
