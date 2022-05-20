@@ -20,7 +20,7 @@ def simulate(mu, rho, graph):
     ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length =1000, samples={"A": 50, "B": 50}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what they did (defining which demes are next to each other) not necessary here.. I think! at least for now
 
-    mts = msprime.sim_mutations(ts, rate = mu)
+    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
     return mts
 
 
@@ -58,18 +58,22 @@ print(ts.tables.nodes)
 # print("writing treefile")
 # import tskit
 
-# ts.dump("output.trees")
+print("writing treefile")
+ts.dump("output.trees")
 # new_ts = tskit.load("output.trees")
 # print(new_ts) #this print is the same output as print(ts), which makes sense
 
 
 print("writing to vcf")
 
-#they do something interesting where it seems like they simulate chromosomes individually- since chromosome number is an argparse argument and vcf files contain only information for whichever chromosome is simulated
+#they do omething interesting where it seems like they simulate chromosomes individually- since chromosome number is an argparse argument and vcf files contain only information for whichever chromosome is simulated
+
+
+    
 
 
 
-
+import numpy #I import it below, but I want to have everything centralized for making the requirements file)
 #following the file formats, writing etc made here: https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
 
 #had this working a while ago, now no data is being written under the header
@@ -78,7 +82,7 @@ n_dip_indv = int(ts.num_samples / 2)
 indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
 import gzip
 with gzip.open("output_geno.vcf.gz", "wt") as vcf_file: #normal formatting would be with open("output.vcf", "w") as vcf_file:, here gzipping for when the analysis gets big. ALSO, kevin suggested "wb" as the flag, but tskit docs say "wt" and it didn't give errors like wb did: "TypeError: memoryview: a bytes-like object is required, not 'str'"
-    ts.write_vcf(vcf_file, individual_names=indv_names) 
+    ts.write_vcf(vcf_file, individual_names=indv_names, position_transform = numpy.round()) 
     #tskit docs specified some weird, extraneous-looking stuff because of these docs on tskit for write_vcf having you do this so plink doesn't freak out 
     #but took out ploidy = 2 b/c ValueError: Cannot specify ploidy when individuals present
 
@@ -146,7 +150,7 @@ import numpy as np
 np.random.seed(10)
 random = norm.rvs(0, 1, (len(iid)))
 mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
-
+phenotype_number = np.array([random, mult_random])
 
 #random = scipy.stats.norm(0) #start with simulating a random gaussian
 #popdf["phenotype"] = random
@@ -154,5 +158,10 @@ popdf["phenotype2"] = mult_random
 
 print(popdf)
 popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
+
+
+
+
+
 
 

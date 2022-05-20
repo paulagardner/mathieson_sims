@@ -18,8 +18,8 @@ python model.py
 #convert to PLINK format. skipping splitting data step for now
 # plink2 --double-id --make-pgen --out convert_2_pgen_test --vcf output_geno.vcf.gz
 
-plink2 --vcf output_geno.vcf.gz --set-missing-var-ids @:# --make-pgen --double-id --out convert_2_pgen_test  #the second half shouldn't read as commented out....
-
+plink2 --vcf output_geno.vcf.gz --set-missing-var-ids @:# --make-pgen --double-id --out convert_2_pgen_test  #the second half shouldn't read as commented out.... but this is what makes the ID column issue you were having diappear
+#https://www.cog-genomics.org/plink/2.0/data#set_all_var_ids
 
 
 
@@ -49,8 +49,8 @@ plink2 --pfile convert_2_pgen_test --mac 1 --write-snplist allow-dups --out conv
 plink2 --pfile convert_2_pgen_test --extract convert_2_pgen_test.snps.snplist --freq --out convert_2_pgen_test.snps.frq
 
 
-chmod +x no_ge_test.r 
-Rscript no_ge_test.r #note- it's important that you're using the shebang version that specifies path, and not the setwd path that I use in the vscode GUI
+# chmod +x no_ge_test.r 
+# Rscript no_ge_test.r #note- it's important that you're using the shebang version that specifies path, and not the setwd path that I use in the vscode GUI
 #! /home/pdgardne/miniconda3/envs/mathieson_sims/bin/Rscript
 ##GWAS time 
 #generated phenotypes using no_ge_test.r
