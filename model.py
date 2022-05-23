@@ -111,6 +111,7 @@ with open(vcf_path, "w") as vcf_file: #normal formatting would be with open("out
 
 
     df = read_vcf(vcf_path) 
+    
     header = get_header(vcf_path)
     print(header)
     # print(df)
@@ -126,26 +127,17 @@ with open(vcf_path, "w") as vcf_file: #normal formatting would be with open("out
     print(df)
 
 
-    # with open('a.vcf', 'w') as testfile: #writes to end of file, but logic works
-    #     for l in header:
-    #         testfile.write(l)
-    
-    #     df.to_csv(testfile, sep = '\t')
-
-
-
-
-    # with open(vcf_path, 'w') as vcf_file: #writes to end of file, but logic works
-    #     for l in header:
-    #         vcf_file.write(l)
-
-    # df.to_csv(vcf_file, sep = '\t')
-
-    with open(vcf_path, 'w') as testfile: #writes to end of file, but logic works
+    with open('a.vcf', 'w') as testfile: #writes to end of file, but logic works
         for l in header:
             testfile.write(l)
     
-        df.to_csv(testfile, sep = '\t')    
+        df.to_csv(testfile, sep = '\t', index = False)
+
+    # with open(vcf_path, 'w') as testfile: #writes to end of file, but logic works
+    #     for l in header:
+    #         testfile.write(l)
+
+    #     df.to_csv(testfile, sep = '\t', index = False)    
 
     # with open(vcf_path, "w") as vcf_file:
     #     df.to_csv(vcf_path, sep = '\t')
