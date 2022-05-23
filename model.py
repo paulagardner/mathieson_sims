@@ -10,7 +10,7 @@ demography = msprime.Demography()
 
 # mu = 1e-8
 #temporarily using a higher value to make sure sims are working correctly
-mu = 1e-5
+mu = 1e-6
 rho = 1e-3
 
 import demes 
@@ -81,10 +81,77 @@ import numpy #I import it below, but I want to have everything centralized for m
 n_dip_indv = int(ts.num_samples / 2)
 indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
 import gzip
-with gzip.open("output_geno.vcf.gz", "wt") as vcf_file: #normal formatting would be with open("output.vcf", "w") as vcf_file:, here gzipping for when the analysis gets big. ALSO, kevin suggested "wb" as the flag, but tskit docs say "wt" and it didn't give errors like wb did: "TypeError: memoryview: a bytes-like object is required, not 'str'"
-    ts.write_vcf(vcf_file, individual_names=indv_names, position_transform = numpy.round()) 
+import pandas as pd
+vcf_path = "output_geno.vcf"
+with open(vcf_path, "w") as vcf_file: #normal formatting would be with open("output.vcf", "w") as vcf_file:, here gzipping for when the analysis gets big. ALSO, kevin suggested "wb" as the flag, but tskit docs say "wt" and it didn't give errors like wb did: "TypeError: memoryview: a bytes-like object is required, not 'str'"
+    ts.write_vcf(vcf_file, individual_names=indv_names) 
+
+    import io
+    import os
+    import pandas as pd
+
+
+    def read_vcf(vcf_path):
+        with open(vcf_path, 'r') as f:
+            lines = [l for l in f if not l.startswith('##')] #removes the header columns. you will need to figure out how to 
+        return pd.read_csv(
+            io.StringIO(''.join(lines)),
+            dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
+                'QUAL': str, 'FILTER': str, 'INFO': str},
+            sep='\t'
+        ).rename(columns={'#CHROM': 'CHROM'})
+
+
+    def get_header(vcf_path): #rewrite to try to incorporate into read_vcf, returning both the df and header. ask skylar about it-- should be similar logic
+        #to demography parser, sorting through the objects that are returned. This matters because the id definition is counting on one object being returned
+        with open(vcf_path, 'r') as f:
+            header = [l for l in f if l.startswith('##')]
+        return header
+
+
+
+    df = read_vcf(vcf_path) 
+    header = get_header(vcf_path)
+    print(header)
+    # print(df)
+
+    id  = ["rs" + str(i) for i,_ in enumerate(df.ID)]
+    # print(id)
+    # id_df = pd.DataFrame(id)
+
+    # print(len(df))
+    # print(len(id_df))
+
+    df['ID'] = id
+    print(df)
+
+
+    with open('a.vcf', 'w') as testfile: #writes to end of file, but logic works
+        for l in header:
+            testfile.write(l)
+    
+        df.to_csv(testfile, sep = '\t')
+
+
+
+
+    # with open(vcf_path, 'w') as vcf_file: #writes to end of file, but logic works
+    #     for l in header:
+    #         vcf_file.write(l)
+
+    # df.to_csv(vcf_file, sep = '\t')
+
+
+
+    # with open(vcf_path, "w") as vcf_file:
+    #     df.to_csv(vcf_path, sep = '\t')
+    # print(vcf_file)
+
+
+
     #tskit docs specified some weird, extraneous-looking stuff because of these docs on tskit for write_vcf having you do this so plink doesn't freak out 
     #but took out ploidy = 2 b/c ValueError: Cannot specify ploidy when individuals present
+
 
 
 
@@ -110,9 +177,9 @@ iid=[f"tsk_{str(i)}indv" for i in range(0,(ss*d))]
 import pandas as pd
 
 print("checking why valueerror: all arrays must be of the same length")
-print(len(fid))
-print(len(iid))
-print(len(deme_id))
+# print(len(fid))
+# print(len(iid))
+# print(len(deme_id))
 
 print("writing pop file: FID, IID, deme ids for each individual")
 popdf=pd.DataFrame({"FID":fid,
@@ -139,7 +206,7 @@ popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 
 
 print("simulating phenotype")
-print(popdf)
+# print(popdf)
 
 import scipy
 from scipy import stats
@@ -156,7 +223,7 @@ phenotype_number = np.array([random, mult_random])
 #popdf["phenotype"] = random
 popdf["phenotype2"] = mult_random
 
-print(popdf)
+# print(popdf)
 popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
 
