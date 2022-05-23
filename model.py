@@ -30,22 +30,22 @@ print("simulating genotypes under demographic model")
 
 ts = simulate(mu, rho, graph)
 
-print("printing tree sequence")
-print(ts)
-print("")
+# print("printing tree sequence")
+# print(ts)
+# print("")
 
 import json
 
-print("printing population table")
-print(ts.tables.populations)
-print("")
+# print("printing population table")
+# print(ts.tables.populations)
+# print("")
 
-print("printing individuals table")
-print(ts.tables.individuals)
-print("")
+# print("printing individuals table")
+# print(ts.tables.individuals)
+# print("")
 
-print("printing nodes table")
-print(ts.tables.nodes)
+# print("printing nodes table")
+# print(ts.tables.nodes)
 
 # population = ts.population()
 # print(population)
@@ -119,8 +119,8 @@ with open(vcf_path, "w") as vcf_file: #normal formatting would be with open("out
     # print(id)
     # id_df = pd.DataFrame(id)
 
-    # print(len(df))
-    # print(len(id_df))
+    print(len(df))
+    print(len(id))
 
     df['ID'] = id
     print(df)
@@ -143,8 +143,8 @@ with open(vcf_path, "w") as vcf_file: #normal formatting would be with open("out
 
 
 
-    # with open(vcf_path, "w") as vcf_file:
-    #     df.to_csv(vcf_path, sep = '\t')
+    with open(vcf_path, "w") as vcf_file:
+        df.to_csv(vcf_path, sep = '\t')
     # print(vcf_file)
 
 
@@ -165,7 +165,7 @@ ss = 50 #again, hardcoded. args.ss originally
 deme_id=[[i]*ss for i in range(0,d)]
 #flatten
 deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes))
-print(deme_id)
+# print(deme_id)
 #fid and iid
 # fid=["msp_"+str(i) for i in range(0,(ss*d))] #mismatch between the above and this was causing my ID's to not work, so I would get a plink error: NO entries in pop.txt correspond to loaded sample IDs.
 # iid=["msp_"+str(i) for i in range(0,(ss*d))]
@@ -176,7 +176,7 @@ iid=[f"tsk_{str(i)}indv" for i in range(0,(ss*d))]
 
 import pandas as pd
 
-print("checking why valueerror: all arrays must be of the same length")
+# print("checking why valueerror: all arrays must be of the same length")
 # print(len(fid))
 # print(len(iid))
 # print(len(deme_id))
