@@ -51,8 +51,8 @@ ts.dump("output.trees")
 
 
 print("writing vcf")
-n_dip_indv = int(ts.num_samples / 2)
-indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
+num_dip_indv = int(ts.num_samples / 2)
+indv_names = [f"tsk_{str(i)}indv" for i in range(num_dip_indv)]
 vcf_path = "output_geno.vcf"
 
 #convert to a pandas df
@@ -80,7 +80,7 @@ with gzip.open(vcf_path+".gz", 'wt') as testfile:
 #make the .txt file that will contain FID and IID    
 d = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table
 #diploid sample size within each deme
-ss = 50 #again, hardcoded
+ss = 50 #again, hardcoded. number of individuals in each sample
 deme_id=[[i]*ss for i in range(0,d)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
 #flatten
 deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes))
@@ -96,13 +96,13 @@ popdf=pd.DataFrame({"FID":fid,
 popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 
 
-#make phenotypes file
-print("simulating phenotype")
+#make phenotypes file-- no effect sizes, placeholder
+print("simulating phenotypes that have no relation to genetics")
 np.random.seed(10)
 random = norm.rvs(0, 1, (len(iid)))
 mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
-phenotype_number = np.array([random, mult_random])
-
+phenotype_ID = np.array([random, mult_random]) #for the numpy array to work as expected, you'll need to make sure this line is accurate to how many phenotypes you want
+num_phenotypes = len(phenotype_ID)
 #random = scipy.stats.norm(0) #start with simulating a random gaussian
 #popdf["phenotype"] = random
 popdf["phenotype2"] = mult_random #simulating multivariate gaussian
@@ -111,6 +111,46 @@ popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
 
 
+esizes = np.zeros(num_dip_indv*num_phenotypes).reshape(num_dip_indv,num_phenotypes) #create an empty numpy array to put the effect sizes in
+no_cov_matrix = np.identity(2)
+print(no_cov_matrix)
 
 
+esizes = multivariate_normal.rvs([0,0], no_cov_matrix, num_dip_indv, random_state = 1234) #this basically gives you the effect sizes matrix you want... a bit confused now on why the np.zeros is necessary? for mult. phenotypes? maybe if you're not including the individuals. ALSO, if you want to pull from different distributions for each population, this will have to be done differently
 
+#trying to make an effect sizes table by making numpy make an array of the right lengths filled with zeros (above),
+#but the multivariate_normal is only giving you the method and not an array of numbers with the code below...
+#the above is nice, if it's equivalent, because you can include a random seed. 
+
+# z = multivariate_normal(mean = [0,0], cov= no_cov_matrix)
+# print(z)
+indiv_index=[i for i in range(0,(ss*d))]
+# print(indiv_index)
+# # y = multivariate_normal(mean = [0,0], cov=no_cov_matrix)
+# for i in indiv_index: #this loop WILL NOT WORK with a len(n_dip_indv) because it is an integer
+#     rv = z.rvs
+#     esizes[i:,] = rv
+print(esizes)
+print(np.var(esizes[0:])) #check if variances/covariance is comiung out the way you'd expect
+print(np.var(esizes[1:]))
+
+
+# print(ts.tables.mutations)
+print(esizes[0,:]) #pulling the effect size for the individual with mutation 0
+
+#loop for tracking which samples have which mutations in order to construct a phenotype. Idea is I need to be able to assign effect sizes to the mutations.
+#confusing thing is that the effect sizes matrix has two columns, for the two phenotypes that are being influenced by ONE mutation. 
+#how does this work with tons of mutations? If I'm understanding, each individual has two values for the phenotype that we're pulling from the effect sizes matrix. 
+
+mutation_index = []
+for tree in ts.trees():
+    for mutation in tree.mutations():
+        # mutation_index=[i for i in enumerate(0,ts.num_mutations)]
+        node = mutation.node
+        # print(node)
+        for sample in tree.samples(node): #each sample is a haploid genome, so aren't 1:1 with individuals
+            print(sample)
+print()
+print(len(ts.tables.mutations))
+mut_index = [i for i in range(len(ts.tables.mutations))] #make a table with mutations indexed from 0 to m-1
+print(mut_index)
