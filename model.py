@@ -12,11 +12,11 @@ from scipy.stats import multivariate_normal
 demography = msprime.Demography()
 graph = demes.load("no_ancestry.yaml")
 
-mu = 1e-6
-rho = 1e-3
+mu = 1e-7
+rho = 1e-7
 
 def simulate(mu, rho, graph):
-    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length =1000, samples={"A": 50, "B": 50}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
+    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = 1e7, samples={"A": 500, "B": 500}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what they did (defining which demes are next to each other) not necessary here.. I think! at least for now
 
     mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
@@ -51,8 +51,8 @@ ts.dump("output.trees")
 
 
 print("writing vcf")
-num_dip_indv = int(ts.num_samples / 2)
-indv_names = [f"tsk_{str(i)}indv" for i in range(num_dip_indv)]
+n_dip_indv = int(ts.num_samples / 2)
+indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
 vcf_path = "output_geno.vcf"
 
 #convert to a pandas df
@@ -78,9 +78,9 @@ with gzip.open(vcf_path+".gz", 'wt') as testfile:
     df.to_csv(testfile, sep = '\t', index = False) 
 
 #make the .txt file that will contain FID and IID    
-d = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table
+d = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table. in this case, you just want the demes of the samples present at the end of the sim. (I think). SO regardless of pop_split.yaml or no_ancestry.yaml, demes A and B split off.
 #diploid sample size within each deme
-ss = 50 #again, hardcoded. number of individuals in each sample
+ss = 500 #again, hardcoded
 deme_id=[[i]*ss for i in range(0,d)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
 #flatten
 deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes))
@@ -96,7 +96,7 @@ popdf=pd.DataFrame({"FID":fid,
 popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 
 
-#make phenotypes file-- no effect sizes, placeholder
+#make phenotypes file
 print("simulating phenotypes that have no relation to genetics")
 np.random.seed(10)
 random = norm.rvs(0, 1, (len(iid)))
@@ -108,49 +108,8 @@ num_phenotypes = len(phenotype_ID)
 popdf["phenotype2"] = mult_random #simulating multivariate gaussian
 popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
+blank_array = np.zeros(n_dip_indv*num_phenotypes).reshape(n_dip_indv,num_phenotypes) #create an empty numpy array to put the effect sizes in
+print(blank_array)
 
-
-
-esizes = np.zeros(num_dip_indv*num_phenotypes).reshape(num_dip_indv,num_phenotypes) #create an empty numpy array to put the effect sizes in
-no_cov_matrix = np.identity(2)
-print(no_cov_matrix)
-
-
-esizes = multivariate_normal.rvs([0,0], no_cov_matrix, num_dip_indv, random_state = 1234) #this basically gives you the effect sizes matrix you want... a bit confused now on why the np.zeros is necessary? for mult. phenotypes? maybe if you're not including the individuals. ALSO, if you want to pull from different distributions for each population, this will have to be done differently
-
-#trying to make an effect sizes table by making numpy make an array of the right lengths filled with zeros (above),
-#but the multivariate_normal is only giving you the method and not an array of numbers with the code below...
-#the above is nice, if it's equivalent, because you can include a random seed. 
-
-# z = multivariate_normal(mean = [0,0], cov= no_cov_matrix)
-# print(z)
-indiv_index=[i for i in range(0,(ss*d))]
-# print(indiv_index)
-# # y = multivariate_normal(mean = [0,0], cov=no_cov_matrix)
-# for i in indiv_index: #this loop WILL NOT WORK with a len(n_dip_indv) because it is an integer
-#     rv = z.rvs
-#     esizes[i:,] = rv
-print(esizes)
-print(np.var(esizes[0:])) #check if variances/covariance is comiung out the way you'd expect
-print(np.var(esizes[1:]))
-
-
-# print(ts.tables.mutations)
-print(esizes[0,:]) #pulling the effect size for the individual with mutation 0
-
-#loop for tracking which samples have which mutations in order to construct a phenotype. Idea is I need to be able to assign effect sizes to the mutations.
-#confusing thing is that the effect sizes matrix has two columns, for the two phenotypes that are being influenced by ONE mutation. 
-#how does this work with tons of mutations? If I'm understanding, each individual has two values for the phenotype that we're pulling from the effect sizes matrix. 
-
-mutation_index = []
-for tree in ts.trees():
-    for mutation in tree.mutations():
-        # mutation_index=[i for i in enumerate(0,ts.num_mutations)]
-        node = mutation.node
-        # print(node)
-        for sample in tree.samples(node): #each sample is a haploid genome, so aren't 1:1 with individuals
-            print(sample)
-print()
-print(len(ts.tables.mutations))
-mut_index = [i for i in range(len(ts.tables.mutations))] #make a table with mutations indexed from 0 to m-1
-print(mut_index)
+#make effect size distributtions:
+mult_random = multivariate_normal.rvs(0, 1, (len(iid)))

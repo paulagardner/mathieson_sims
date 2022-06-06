@@ -56,5 +56,5 @@ plink2 --pfile convert_2_pgen --extract convert_2_pgen.snps.snplist --freq --out
 #bash gwas.sh convert_2_pgen_test pop.txt gwas.test #https://www.biostars.org/p/491009/ --ran into an error before wehere I had pop written as pop.csv, 
     #but the --pheno flag in plink needs it to be a space or comma delimited file
 
-Rscript "PCA_plotting.r"
+#Rscript "PCA_plotting.r"
 
