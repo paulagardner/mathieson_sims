@@ -16,7 +16,7 @@ from itertools import groupby
 demography = msprime.Demography()
 graph = demes.load("no_ancestry.yaml")
 
-mu = ((1e-7)*2)
+mu = ((1e-7))
 rho = 1e-7
 
 deme_size = 10
@@ -359,13 +359,19 @@ q = pd.DataFrame(c)
 r = (q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python #note that this doesn't preserve your first column. For my purposes this saves me the step of removing it later, but you could probably always add a column in based on index number. 
 # if d[:,0] in dups:
 #     print(d)
-print(r)
+print("summed effects",r)
 
 df = r.reindex(np.arange(n_dip_indv), fill_value = 0)
-print(df)
+print("phenotypes as numpy array",df)
 
-s= np.array(df.iloc[:,[0,1]])
-print(s)
+isblank = []
+if dups == isblank:
+    print("no dups")
+else:
+    s= np.array(df.iloc[:,[0,1]])
+    print(s)
+
+
 # effects = np.asarray(df)
 # print(effects)
 # numpy.where()
