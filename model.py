@@ -16,7 +16,7 @@ from itertools import groupby
 demography = msprime.Demography()
 graph = demes.load("no_ancestry.yaml")
 
-mu = ((1e-7))
+mu = ((1e-7)*2)
 rho = 1e-7
 
 deme_size = 10
@@ -349,17 +349,26 @@ dups = list_duplicates(a) #so this works with the array format--nice
 print("duplicate individuals:",dups)
 
 #this causes an error when there's no mutations, so put it in an if/elif 
-d = np.array((c[:,1].sum(), c[:,2].sum())) #example to sum by column-- use this in, presumably, a for loop to match the duplicates 
-print("sum by columns test",d)
+# d = np.array((c[:,1].sum(), c[:,2].sum())) #example to sum by column-- use this in, presumably, a for loop to match the duplicates 
+# print("sum by columns test",d)
 # m = np.reshape(A, (-1, num_phenotypes))
 # print(m)
 
 q = pd.DataFrame(c)
 # print(q)
-print(q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python
+r = (q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python #note that this doesn't preserve your first column. For my purposes this saves me the step of removing it later, but you could probably always add a column in based on index number. 
 # if d[:,0] in dups:
 #     print(d)
+print(r)
 
+df = r.reindex(np.arange(n_dip_indv), fill_value = 0)
+print(df)
+
+s= np.array(df.iloc[:,[0,1]])
+print(s)
+# effects = np.asarray(df)
+# print(effects)
+# numpy.where()
 
 #https://stackoverflow.com/questions/33929389/python-how-to-find-duplicates-and-sum-their-values
 #https://stackoverflow.com/questions/28706209/sum-second-value-in-tuple-for-each-given-first-value-in-tuples-using-python
