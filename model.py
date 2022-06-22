@@ -45,7 +45,12 @@ def get_header(vcf_path): #rewrite to try to incorporate into read_vcf, returnin
         header = [l for l in f if l.startswith('##')]
     return header
 
-
+###########33may not be necessary, made for working w/ the tuple
+def list_duplicates(sequence): #https://stackoverflow.com/questions/9835762/how-do-i-find-the-duplicates-in-a-list-and-create-another-list-with-them/ This only works with this tuple pipeline i'm doing, since making a list of lists below renders it unhashable
+    seen = set()
+    seen_add = seen.add
+    seen_mult = set(x for x in sequence if x in seen or seen_add(x))
+    return(list(seen_mult))
 
 
 
@@ -198,31 +203,6 @@ mutation_effects_dict = dict(enumerate(muteffects))
 print("mutations and effects dictionary:", mutation_effects_dict)
 print()
 
-#ALTERNATE WAY: to make a dict
-# effects = multivariate_normal.rvs(0, 1, (len(ts.tables.mutations
-# effects = dict(enumerate(multivariate_normal.rvs(0, 1, (len(ts.tables.mutations))))) #this way will eventually lead to problems: 
-# # Traceback (most recent call last):
-# #   File "/home/pdgardne/mathieson_sims/model.py", line 184, in <module>
-# #     effects = dict(enumerate(multivariate_normal.rvs(0, 1, (len(ts.tables.mutations)))))
-# # TypeError: 'numpy.float64' object is not iterable
-# print("effect sizes for each mutation:",effects)
-
-
-# rng = default_rng()
-# effects = rng.multivariate_normal([0,0], cov = var_covar)
-# print("effects:",effects)
-
-
-
-# def chunker(seq, size): #https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks/434411#434411
-#     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
-# samples_by_indv = [] 
-# for group in chunker(sample_list, 2): #again, from https://stackoverflow.com/questions/434287/what-is-the-most-pythonic-way-to-iterate-over-a-list-in-chunks/434411#434411
-#     samples_by_indv.append(group)
-# print(samples_by_indv)
-
-
-
 #numpy solutions: 
 # samples_by_indv = np.array_split(sample_list, deme_size*2) #https://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks
 
@@ -246,63 +226,14 @@ print("samples keyed to individuals:",individuals_dict)
 
 
 
-""""""
 
-# print(samples_under_muts)
-# mutations_dict = dict(enumerate(samples_under_muts))
-# print("samples keyed to mutations:",mutations_dict)
+# print()
 
-
-# for indv in samples_by_indv:
-#     for sample in indv: 
-
-##########################################WAS WORKING HERE
-# for mutation in samples_under_muts:
-#     for sample in mutation:
-#         if sample in individuals_dict:
-#             print(sample)
-        # for effects in muteffects: 
-        #     for effect in effects:
-
-# print([k for k,v in individuals_dict.items() if v in samples_under_muts] )
-
-# for k, v in individuals_dict.items():
-#     for sample in v: 
-#         # print(sample)
-#         for mut in samples_under_muts:
-#             for spl in mut:
-#                 if spl in v: 
-#                     print(k)
-
-# for mut in samples_under_muts:   #https://stackoverflow.com/questions/42056275/comparing-list-against-dict-return-key-if-value-matches-list
-#     for spl in mut:
-#         for k, v in individuals_dict.items():
-#             if spl in v:
-#                 print(k)
-                
-
-# for key, value in samples_under_muts_dict.items():   #https://stackoverflow.com/questions/42056275/comparing-list-against-dict-return-key-if-value-matches-list
-#     print("mutation:",key)
-#     for spl in value:
-#         for k, v in individuals_dict.items():
-#             if spl in v:
-#                 print("individual:",k)
-#                 effects[k]
-                
-# for mutation, samples in samples_under_muts_dict.items():   #https://stackoverflow.com/questions/42056275/comparing-list-against-dict-return-key-if-value-matches-list
-#     print("mutation:",mutation)
-#     for sample in samples:
-#         for k, v in individuals_dict.items():
-#             if sample in v:
-#                 print("individual:",k)
-#                 # effects[k] = effects
-
-print()
-# for i, j in mutations_dict.items():
-#             print(j)
-
-a = []
+a = [] #https://stackoverflow.com/questions/31250129/python-numpy-array-of-numpy-arrays "Never append to numpy arrays in a loop: it is the one operation that NumPy is very bad at compared with basic Python"
 b = []
+# muteffects = np.asarray(muteffects)
+# print("muteffects as array:",muteffects)
+
 
 for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
     # print(samples_with_mut, effects_for_mut)
@@ -313,127 +244,143 @@ for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
                 a.append(k)
                 b.append(effects_for_mut)
 print()
-print()   
-#problem with using a normal dict as below: dictionary keys cannot be repeated, so if an individual has multiple mutations that we want to add together, the dict will only preserve the LAST it encounters. (last: https://www.guru99.com/python-dictionary-append.html)
-# a = zip(samples_under_muts, muteffects):
-# dic = dict(zip(samples_under_muts, muteffects))
-# print(dic)
+# print()   
+# #problem with using a normal dict as below: dictionary keys cannot be repeated, so if an individual has multiple mutations that we want to add together, the dict will only preserve the LAST it encounters. (last: https://www.guru99.com/python-dictionary-append.html). This could be useful for getting the info into                  
+# # a = zip(samples_under_muts, muteffects):
+# # dic = dict(zip(samples_under_muts, muteffects))
+# # print(dic)
 
 l = list(zip(a, b)) #workaround with tuple: https://stackoverflow.com/questions/33593556/zipped-array-returns-as-zip-object-at-0x02b6f198
-print("tuple list:",l)
-print()
-# print(l)
-
-# if [num[0] for num in l] == [num[0] for num in l]:
-#     print(num[0])
-
-# def check(entry):
-#     if entry[0] == entry[0]:
-#         print(entry)
-
-# check(l)
-# a = ([num[0] for num in l]) #https://stackoverflow.com/questions/33829535/how-to-slice-a-list-of-tuples-in-python
-# if a == a:
-#     print('duplicates present')
-# else:
-#     print('no duplicates')
-
-# has_duplicates = sum()
-
-for i,j in l:
-#     # print(isinstance(i, int)) #confirmed I am working with integers https://stackoverflow.com/questions/3501382/checking-whether-a-variable-is-an-integer-or-not
-    print(i, j)
-    # if i == i: #this doesn't work, presumably since it's checking if i == i in each loop, and there's only one i per loop.
-
-        # print(j)
-        
-print()
+# print("tuple list:",l)
+# print()
 
 
-def list_duplicates(sequence): #https://stackoverflow.com/questions/9835762/how-do-i-find-the-duplicates-in-a-list-and-create-another-list-with-them
-    seen = set()
-    seen_add = seen.add
-    seen_mult = set(x for x in sequence if x in seen or seen_add(x))
-    return(list(seen_mult))
+
 
 dups = (list_duplicates(a))
 print("duplicate individuals:",dups)
+print()
 
 
-#so, this does indeed look a lot like l to begin with, but it's useful in that it's just items where the i entries appear multiple times.
+# #so, this does indeed look a lot like l to begin with, but it's useful in that it's just items where the i entries appear multiple times.
+h = []
+print("###########################")
 for i, j in l:
     if i in dups:
-        print(i, j)
+        print(i,j)
 
-# for b in dups:
-#     for i,j in l:
-#         print(b, j)
-#         o = {i:(j) for i,j in l}  # https://stackoverflow.com/questions/55565690/unhashable-type-list-in-dictionary
-#         o = list([i,j] for i in l)
-# print(o)
+
+# #so, have a function that checks your tuple for duplicates. make your dictionary as you would the list above, and then append the duplicate in (and overwrite it)
+# dic = dict(zip(a,b))
+# # print(dic)
 
 
 
 
 
-# for i, j in range(len(l)-1): #https://stackoverflow.com/questions/70227636/how-to-check-if-elements-of-two-lists-are-equal-or-not-using-if-statement-in-pyt
-    # if l[i] == l[i+1]:
-    #     print(j)
-    # # check(i)
-
-
-# x = [(i, j) for i, j in l if i == 1] #https://stackoverflow.com/questions/2191699/find-an-element-in-a-list-of-tuples. There, however, they focus on on particular number at a time. I want ANY matching numbers.
-# print(x)
 
 
 
-#the below is still not completely correct, because it returns only when BOTH the individual and effect sizes match completely. I care about finding all instances where individual repeats, regardless of effect size   
-# no_dupes = [x for n, x in enumerate(l) if x not in l[:n]] #https://stackoverflow.com/questions/9835762/how-do-i-find-the-duplicates-in-a-list-and-create-another-list-with-them. Why so clunky? can't use sets/dicts in this particular case. "if list elements are not hashable, you cannot use sets/dicts and have to resort to a quadratic time solution (compare each with each)"
-# print("no dupes:",no_dupes) # [[1], [2], [3], [5]]
-# dupes = [x for n, x in enumerate(l) if x in l[:n]]
-# print("dupes:",dupes) # [[1], [3]]
-
-# for i in l:
-#     check(i)
-#     # for j in i:
-#     #     # check(j)
-#     #     print(j)s
-
-#so, have a function that checks your tuple for duplicates. make your dictionary as you would the list above, and then append the duplicate in (and overwrite it)
-dic = dict(zip(a,b))
-# print(dic)
 
 
-# a = [i for i, j in groupby(a)]
-# b = [list(j) for i, j in groupby(b)]
-# l = dict(zip(a,b))
-# print(l)
 
 
-a = []
 
-#DOING THE ABOVE, BUT MAKES LIST INSTEAD OF THE TUPLE: 
-for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
-    # print(samples_with_mut, effects_for_mut)
-    for sample in samples_with_mut:
-        for k, v in individuals_dict.items():
-            if sample in v:
-                print("individual",k,"has an allele with the following effect:",effects_for_mut)
-                a.append([k, effects_for_mut])
-                # b.append(effects_for_mut)
-print(a)
 
-for i, j in a:
-    print(i, j)
 
-def list_duplicates(sequence): #https://stackoverflow.com/questions/9835762/how-do-i-find-the-duplicates-in-a-list-and-create-another-list-with-them
-    seen = set()
-    seen_add = seen.add
-    seen_mult = set(x for x in sequence if x in seen or seen_add(x))
-    return(list(seen_mult))
 
-dups = (list_duplicates(a(i)))
+
+# a = []
+
+# #DOING THE ABOVE, BUT MAKES LIST INSTEAD OF THE TUPLE (And makes your dup loop not work:)
+# for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
+#     # print(samples_with_mut, effects_for_mut)
+#     for sample in samples_with_mut:
+#         for k, v in individuals_dict.items():
+#             if sample in v:
+#                 print("individual",k,"has an allele with the following effect:",effects_for_mut)
+#                 a.append([k, effects_for_mut])
+#                 # b.append(effects_for_mut)
+# print(a)
+
+
+# way to make lists (instead of tuples) that won't mess up the find_dups loop: 
+# z = list(list(a) for a in zip(a,b)) #https://blog.finxter.com/zip-with-list-output-instead-of-tuple-most-pythonic-way/#:~:text=Short%20answer%3A%20Per%20default%2C%20the,a%20new%20nested%20list%20object.
+# # z =np.hstack(a,b)
+# print("list of indivs and allele effects:", z)
+
+# dups = list_duplicates(a)
+# print("duplicate individuals:",dups)
+
+#####make array of just duplicate values to sum them up? and then you could make an array of just the unique stuff below and append the two? but I think it would be easier to just find the duplicates in numpy and deal with the whole array of nonzero effects
+# c = []
+# d = []
+# for i, j in z:
+#     if i in dups:
+#         c.append(i)
+#         d.append(j)
+# c = np.asarray(c)
+# d = np.asarray(d)
+# e = np.column_stack((c,d))
+# print(e)
+# array_v = np.vstack(z)
+# print(array_v)
+
+
+
+
+
+
+#works without the chunk above... 
+##########Dissue pops up where 'a' values (representing individuals) come up as floats
+a = np.asarray(a)
+# print(a)
+# print(b)
+b = np.asarray(b)
+# print(a)
+# print(b)
+# print(b.ndim)
+
+print()
+c = np.column_stack((a.astype(int),b))
+print("array with individual, effect sizes:",c)
+
+dups = list_duplicates(a) #so this works with the array format--nice
 print("duplicate individuals:",dups)
+
+#this causes an error when there's no mutations, so put it in an if/elif 
+d = np.array((c[:,1].sum(), c[:,2].sum())) #example to sum by column-- use this in, presumably, a for loop to match the duplicates 
+print("sum by columns test",d)
+# m = np.reshape(A, (-1, num_phenotypes))
+# print(m)
+
+q = pd.DataFrame(c)
+# print(q)
+print(q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python
+# if d[:,0] in dups:
+#     print(d)
+
+
+#https://stackoverflow.com/questions/33929389/python-how-to-find-duplicates-and-sum-their-values
+#https://stackoverflow.com/questions/28706209/sum-second-value-in-tuple-for-each-given-first-value-in-tuples-using-python
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
