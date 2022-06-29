@@ -104,25 +104,23 @@ deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, 
 fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))]
 iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))] #number of individuals in the sample
 
-print("writing pop file: FID, IID, deme ids for each individual")
-popdf=pd.DataFrame({"FID":fid,
-                  "IID":iid,
-                  "POP":deme_id})
-
-popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
+# print("writing pop file: FID, IID, deme ids for each individual")
+# popdf=pd.DataFrame({"FID":fid,
+#                   "IID":iid,
+#                   "POP":deme_id})
 
 
-# make phenotypes file
-print("simulating phenotypes that are purely environmental")
-np.random.seed(10)
-random = norm.rvs(0, 1, (len(iid)))
-mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
-phenotype_ID = np.array([random, mult_random]) #for the numpy array to work as expected, you'll need to make sure this line is accurate to how many phenotypes you want
-num_phenotypes = len(phenotype_ID)
-#random = scipy.stats.norm(0) #start with simulating a random gaussian
-#popdf["phenotype"] = random
-popdf["phenotype2"] = mult_random #simulating multivariate gaussian
-popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
+# # make phenotypes file
+# print("simulating phenotypes that are purely environmental")
+# np.random.seed(10)
+# random = norm.rvs(0, 1, (len(iid)))
+# mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
+# phenotype_ID = np.array([random, mult_random]) #for the numpy array to work as expected, you'll need to make sure this line is accurate to how many phenotypes you want
+# num_phenotypes = len(phenotype_ID)
+# #random = scipy.stats.norm(0) #start with simulating a random gaussian
+# #popdf["phenotype"] = random
+# popdf["phenotype2"] = mult_random #simulating multivariate gaussian
+# popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
 
 phenos = 2 #make this into args...
@@ -388,6 +386,8 @@ else:
 env_random_pheno = np.array(norm.rvs(0, 0.25, (2*(len(iid))))).reshape(20,2) #my cheap way of traying to just make totally random phenotypes that are the same length as the two-dimensional np array for mut effects on phenotypes. You will have to figure out the scaling of how to not have the environmental phenos overwhelm your mutational effects
 print(env_random_pheno)
 
+#and back to pandas again to get this all written as a txt file with headers... not sure if necessary for downstream . checking now
+
 if muteffects == isblank:
     print("no mutations, phenotypes entirely environmental", env_random_pheno)
     # np.savetxt("pop"+".txt", env_random_pheno, delimiter="\t")
@@ -399,10 +399,45 @@ else:
     print("overall phenotypes", sum_pheno)
     # np.savetxt("pop"+".txt", sum_pheno, delimiter="\t")
 
+##############trying to keep from converting back to pandas just in order to write a .txt 
+#splitting np array by its columns in order to use np.transpose to write to the .txt
+pheno_1, pheno_2 = env_random_pheno.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
+popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) # popdf = popdf.T
+print(popdf)
+with open('pop.txt', 'wb') as f:
+    f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
+    np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
+
+
+# print(fid)
+
+# print("writing pop file: FID, IID, deme ids for each individual")
+
+
+
+# popdf=pd.DataFrame({"FID":fid,
+#                   "IID":iid,
+#                   "POP":deme_id})
+
+# # make phenotypes file
+# print("simulating phenotypes that are purely environmental")
+# np.random.seed(10)
+# random = norm.rvs(0, 1, (len(iid)))
+# mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
+# phenotype_ID = np.array([random, mult_random]) #for the numpy array to work as expected, you'll need to make sure this line is accurate to how many phenotypes you want
+# num_phenotypes = len(phenotype_ID)
+# #random = scipy.stats.norm(0) #start with simulating a random gaussian
+# #popdf["phenotype"] = random
+# popdf["phenotype2"] = mult_random #simulating multivariate gaussian
+# popdf.to_csv("pop1"+".txt",sep="\t",header=True,index=False,)
+
+# print(popdf)
+
+# np.savetxt("pop.txt", popdf, fmt = '%s')
 
 
 
 
 
 #custom distribution? for their effect sizes function? https://scicomp.stackexchange.com/questions/1658/define-custom-probability-density-function-in-python
-#same as above? https://stackoverflow.com/questions/4265988/generate-random-numbers-with-a-given-numerical-distribution
+#same as above? https://stackoverflow.com/questions/4265988/generate-random-numbers-with-a-given-numerical-distribution #

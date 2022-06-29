@@ -27,7 +27,7 @@ library(dplyr)
 common_pca$row_number <- 1:nrow(common_pca)
 
 #common_pca
-common_pca$deme_id <- ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2) # galen's suggestion
+common_pca$deme_id <- ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2) # galen's suggestion. This script is hardcoded to the numbers hardcoded into the yaml files, so just splits the individuals into two demes by that number. Make sure you don't confuse these numbers with your sample numbers. 
 common_pca
 
 
