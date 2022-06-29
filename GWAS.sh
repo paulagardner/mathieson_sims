@@ -9,7 +9,7 @@ plink2 --pfile convert_2_pgen --read-freq convert_2_pgen.snps.frq.afreq --glm hi
 
 
 
-#exit w/ incorrect arguments if there are less than 3 provided (eigenvector file is optional)
+#exit w/ incorrect arguments if there are less than 3 provided (eigenvector file is optional, so you may have 4)
 if [ "$#" -lt 3  ]; then
     echo "usage: bash gwas.sh <path to pgen genotype file - prefix> <path to phenotype file> <path to output file> <eigenvector file - optional>"
     exit 1

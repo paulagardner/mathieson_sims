@@ -31,8 +31,9 @@ common_pca$deme_id <- ifelse(common_pca$row_number >= 0 & common_pca$row_number 
 common_pca
 
 
-new_df <- data.frame(matrix(ncol = 1, nrow = 500))
+new_df <- data.frame(matrix(ncol = 1, nrow = 1000))
 new_df$deme_id <- new_df %>% mutate(ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2)) # galen's suggestion
+new_df
 #new_df
 # if (common_pca$row_number <= 50){common_pca$deme_id = 1}
 # else {common_pca$deme_id = 2}
@@ -60,7 +61,7 @@ rare_pca$deme_id <- ifelse(rare_pca$row_number >= 0 & rare_pca$row_number <= 500
 rare_pca
 
 
-new_df_2 <- data.frame(matrix(ncol = 1, nrow = 500))
+new_df_2 <- data.frame(matrix(ncol = 1, nrow = 1000))
 new_df_2$deme_id <- new_df_2 %>% mutate(ifelse(rare_pca$row_number >= 0 & rare_pca$row_number <= 500, 1, 2)) # galen's suggestion
 new_df_2
 

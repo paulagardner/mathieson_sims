@@ -112,9 +112,9 @@ popdf=pd.DataFrame({"FID":fid,
 popdf.to_csv("test"+".pop",sep="\t",header=False,index=False)
 
 
-#make phenotypes file
-# print("simulating phenotypes that are purely environmental")
-# np.random.seed(10)
+# make phenotypes file
+print("simulating phenotypes that are purely environmental")
+np.random.seed(10)
 random = norm.rvs(0, 1, (len(iid)))
 mult_random = multivariate_normal.rvs(0, 1, (len(iid)))
 phenotype_ID = np.array([random, mult_random]) #for the numpy array to work as expected, you'll need to make sure this line is accurate to how many phenotypes you want
@@ -125,7 +125,7 @@ popdf["phenotype2"] = mult_random #simulating multivariate gaussian
 popdf.to_csv("pop"+".txt",sep="\t",header=True,index=False,)
 
 
-phenos = 2
+phenos = 2 #make this into args...
 #make the variance-covariance matrix of phenotypic effects: 
 var_covar = np.identity(phenos)
 print(var_covar)
@@ -134,7 +134,7 @@ print(var_covar)
 means = np.zeros(phenos)
 
 #create an empty numpy array to put the effect sizes in. It will return a table with #phenotypes column and #individuals rows.
-effects = np.zeros(n_dip_indv*num_phenotypes).reshape(n_dip_indv,num_phenotypes)
+effects = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos)
 print("empty array for effect sizes:", effects)
 
  
@@ -356,13 +356,14 @@ print("duplicate individuals:",dups)
 
 q = pd.DataFrame(c)
 # print(q)
-r = (q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python #note that this doesn't preserve your first column. For my purposes this saves me the step of removing it later, but you could probably always add a column in based on index number. 
+r = (q.groupby([0]).aggregate(sum)) #https://stackoverflow.com/questions/35961416/how-to-merge-and-sum-duplicates-in-python #note that this doesn't preserve your first (individual number) column. For my purposes this saves me the step of removing it later, but you could probably always add a column in based on index number. 
 # if d[:,0] in dups:
 #     print(d)
 print("summed effects",r)
 
 df = r.reindex(np.arange(n_dip_indv), fill_value = 0)
 print("phenotypes as numpy array",df)
+
 
 isblank = []
 if dups == isblank:
@@ -382,77 +383,26 @@ else:
 
 
 
+# overall_phenotype = 
+
+env_random_pheno = np.array(norm.rvs(0, 0.25, (2*(len(iid))))).reshape(20,2) #my cheap way of traying to just make totally random phenotypes that are the same length as the two-dimensional np array for mut effects on phenotypes. You will have to figure out the scaling of how to not have the environmental phenos overwhelm your mutational effects
+print(env_random_pheno)
+
+if muteffects == isblank:
+    print("no mutations, phenotypes entirely environmental", env_random_pheno)
+    # np.savetxt("pop"+".txt", env_random_pheno, delimiter="\t")
+elif  dups == isblank:
+    print("no duplicate mutations",df)
+    # np.savetxt("pop"+".txt", df, delimiter="\t")
+else:
+    sum_pheno = np.add(s, env_random_pheno)
+    print("overall phenotypes", sum_pheno)
+    # np.savetxt("pop"+".txt", sum_pheno, delimiter="\t")
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# print(effects)
-
-
-
-
-# # blank = np.zeros
-# for key, value in samples_under_muts_dict.items():
-#     for spl in value:
-#         for k, v in mutations_dict.items():
-#                 print(v)
-
-#something along the lines of: if i
-
-
-
-# x = {mut: {} }
-
-
-
-# print(multivariate_normal.rvs(0, 1, (len(ts.tables.mutations))))
-# print(samples_under_muts)
-
-
-
-# print()
-# for mut in samples_under_muts:
-#     # print(mut)
-#     print()
-#     for spl in mut: 
-#         print(spl)
-
-
-
-#get individual id# from samples list
-# for i in range(len(samples_by_indv)):
-#     print(i)
-
-# for i in enumerate(samples_by_indv):
-#     print(i)
-
-
-#what needs to happen: 
-#make effect sizes for each mutation
-#be able to access which individual has those mutations, based on the samples
-#write the effect sizes to the blank array. 
-#make it pleiotropic 
-
-#put effect sizes into nempty numpy array
-#make an additive model 
-
-#will have to make a list or dict of effect sizes for each mutation.
-#then, will have to iterate over samples_under_muts to add that effect size to every sample with the mutation
-#then, maybe do the dictionary grouping thing again, but on the effect sizes to get effects for the individuals?? and then you can access that to write it to the phenotype? 
 
 #custom distribution? for their effect sizes function? https://scicomp.stackexchange.com/questions/1658/define-custom-probability-density-function-in-python
 #same as above? https://stackoverflow.com/questions/4265988/generate-random-numbers-with-a-given-numerical-distribution
