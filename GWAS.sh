@@ -1,3 +1,4 @@
+#1/bin/bash
 #copied from https://github.com/Arslan-Zaidi/popstructure/blob/master/code/gwas/grid/tau-9/scripts/gwas/gwas.sh 
 #args for gwas.sh:
 #1. genotype file
