@@ -113,46 +113,35 @@ mult_random = multivariate_normal.rvs(0, 1, (len(iid))) #assigns a random effect
 # print(mult_random)
 
 print("number of mutations:", len(ts.tables.mutations))
-#make a table with mutations indexed from 0 to m-1
+#make a table with mutations indexed from 0 to m - 1
 mut_index = [i for i in range(len(ts.tables.mutations))] #goes from 0 to #mutations -1 (again, a consequence of python counting from 0)
 print("mutation index array: ", mut_index)
-# index = mut_index.index
-# print(index)
 
 treesequence = tskit.load("output.trees")
-print("sample list:", treesequence.samples()) #20 individuals so 40 samples happen at the end 
+print("sample list:", treesequence.samples()) #if 20 individuals so 40 samples present at end
 sample_list = treesequence.samples()
 
 
-#these have to be outside the loop below, or else you will create a clear list every loop until the last one.
+#these have to be outside the loop below, or else you will create and overwrite your lists of the same name, every loop, until the last one.
 samples_under_muts = []
 muteffects = []
 
 for tree in ts.trees():
-    for mutation in tree.mutations(): #this is where kevin suggests to incorporate the array of effect sizes  
-        # print(mutation)
-        # print(node)
-
+    for mutation in tree.mutations(): 
         # print("samples with mutation",mutation.id,":") 
         node = mutation.node #ts.node gives you something that looks like this: Node(id=6, flags=1, time=0.0, population=0, individual=3, metadata=b''). notice the individual number is there. ..
         #...this is the individual that contained the node in which the mutation originated
         mutlists = []
         samples_under_muts.append(mutlists)  
-        
-
-        
+                
         rng = default_rng()
-        # effects.append(multivariate_normal.rvs([0,0], cov = var_covar))
+        #make effect sizes distribution to pull values from:
         muteffects.append(rng.multivariate_normal(mean = means, cov = var_covar).tolist()) #was returning array items before; https://www.journaldev.com/32797/python-convert-numpy-array-to-list
         #also, for above: https://stackoverflow.com/questions/16016959/scipy-stats-seed
+            #previous way I did this, but where I wasn't sure what the mean was due to having unnamed variables: # effects.append(multivariate_normal.rvs([0,0], cov = var_covar)) 
         for sample in tree.samples(node): #each sample is a haploid genome, so aren't 1:1 with individuals. Only prints samples with a node that contains a mutation. If you don't specify node, all samples with ANY mutation node will be printed
             #I want to assign a given effect size to all samples that have the same mutation
-            #do I need to figure out which node has the mutation and assign that effect to all children? Or can I just use samples to find individuals
-
-            #write something here to replace the entries in blank_array with effect sizes sampled from mut_index # https://stackoverflow.com/questions/2582138/finding-and-replacing-elements-in-a-list ? 
-            # print(sample,"node",node) #I've made the sample size really low so that you can see all the samples that contain mutations easily. 
             print(sample)
-
             mutlists.append(sample) #this makes it so I have a list of mutation lists, which contain the samples that contain those mutations. 
 
 
@@ -188,8 +177,6 @@ print("samples keyed to individuals:",individuals_dict)
 
 indv_with_mutations = [] #https://stackoverflow.com/questions/31250129/python-numpy-array-of-numpy-arrays "Never append to numpy arrays in a loop: it is the one operation that NumPy is very bad at compared with basic Python"
 muteffects_in_individuals = []
-# muteffects = np.asarray(muteffects)
-# print("muteffects as array:",muteffects)
 
 
 for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
@@ -205,7 +192,6 @@ for samples_with_mut, effects_for_mut in zip(samples_under_muts, muteffects):
 #pairing the two lists above (individuals and ONE of the mutation effects they posess. might be able to do this within the loop)
 paired_tuple = list(zip(indv_with_mutations, muteffects_in_individuals)) #workaround with tuple: https://stackoverflow.com/questions/33593556/zipped-array-returns-as-zip-object-at-0x02b6f198
 print("tuple list:",paired_tuple)
-# print()
 
 dups = (list_duplicates(indv_with_mutations))
 print("duplicate individuals:",dups)
@@ -213,11 +199,6 @@ print()
 
 print('###################################################')
 
-# #so, this does indeed look a lot like l to begin with, but it's useful in that it's just items where the i entries appear multiple times.
-# h = []
-# for i, j in paired_tuple:
-#     if i in dups:
-#         print(i,j)
 
 
 ##########Dissue pops up where 'a' values (representing individuals) come up as floats
@@ -248,31 +229,13 @@ else:
     array_for_dups = np.array(population_effects.iloc[:,[0,1]])
     print("phenotypes as numpy array", array_for_dups)
 
-# overall_phenotype = 
-
 env_random_pheno = np.array(norm.rvs(0, 0.25, (2*(len(iid))))).reshape(20,2) #my cheap way of traying to just make totally random phenotypes that are the same length as the two-dimensional np array for mut effects on phenotypes. You will have to figure out the scaling of how to not have the environmental phenos overwhelm your mutational effects
 print(env_random_pheno)
 
 #and back to pandas again to get this all written as a txt file with headers... not sure if necessary for downstream . checking now
 
 
-# def write_txt(pheno_1, pheno_2, input_array, txt_name):
-#     pheno_1, pheno_2 = array_name.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-#     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
-#     with open(txt_name, 'wb') as f:
-#         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
-#         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
-
-
-
-
 if muteffects == isblank:
-
-    # print("no mutations, phenotypes entirely environmental", env_random_pheno)
-    # input_array = env_random_pheno
-    # txt_name = "pop.txt"
-    # write.txt(pheno_1, pheno_2, input_array= input_array, txt_name = txt_name)
-    #splitting np array by its columns in order to use np.transpose to write to the .txt\
     txt_name = "pop.txt"
     pheno_1, pheno_2 = env_random_pheno.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
@@ -310,4 +273,4 @@ else:
 
 
 #custom distribution? for their effect sizes function? https://scicomp.stackexchange.com/questions/1658/define-custom-probability-density-function-in-python
-#same as above? https://stackoverflow.com/questions/4265988/generate-random-numbers-with-a-given-numerical-distribution #
+#same as above? https://stackoverflow.com/questions/4265988/generate-random-numbers-with-a-given-numerical-distribution 
