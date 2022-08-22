@@ -12,19 +12,23 @@ from scipy.stats import multivariate_normal
 from numpy.random import default_rng
 import tskit
 from itertools import groupby
+import json
 
 demography = msprime.Demography()
 graph = demes.load("no_ancestry.yaml")
 
 mu = ((1e-6))
 rho = 1e-7
+bases = 500
 
 deme_size = 10
 def simulate(mu, rho, graph):
-    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = 500, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
+    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
 
+
     mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
+
     return mts
 
 def make_vcf(vcf_path, indv_names):
@@ -153,7 +157,6 @@ def make_phenotypes():
     print("summed phenotypes:", "\n", phenotypes_array)
     return phenotypes_array
 
-
 def make_popfile(phenotypes_array):
 
     deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
@@ -170,6 +173,9 @@ def make_popfile(phenotypes_array):
     with open(txt_name, 'wb') as f:
         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
+
+    return popdf
+    # return phenotypes_array
 
 
 
@@ -193,8 +199,85 @@ demes = 2 # replace hard-coded with argparser or taking the 'populations' value 
 fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))]
 iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))] #number of individuals in the sample
 print("simulating phenotypes, from environmental and genetic effects")
-a = make_phenotypes()
+phenotypes = make_phenotypes()
 
 print("making .txt file that contains individuals and phenotypes")
-make_popfile(a)
+make_popfile(phenotypes)
+
+
+
+print(ts.table_metadata_schemas)
+print("\n","UNMODIFIED TABLES:", "\n")
+# print(ts.tables) #what this and the above tell me is that there is metadata for the population, but not for the nodes, edges, sites, mutations, migrations, or individuals. So I want to make a schema for the individuals if i'm wanting to invoke phenotypes/add to it
+
+schema = tskit.MetadataSchema({
+    'codec': 'json',
+    'additionalProperties': False,
+    'properties': {'phenotype1': {'description': 'first phenotype value','type': 'number'}, #why not float? JSON does not like it. https://json-schema.org/understanding-json-schema/reference/numeric.html#number
+                   'phenotype2': {'description': 'second phenotype value','type': 'number'}},
+    'required': ['phenotype1', 'phenotype2'],
+    'type': 'object',
+}) #https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata. pretty certain this schema is correct
+
+
+
+
+
+
+
+###################THE ORIGINAL WAY
+tables = tskit.TableCollection(sequence_length=bases)  # make a new, empty set of tables
+tables.individuals.metadata_schema = schema
+
+
+# print(tables)
+# print(ts)
+# print("schemas:")
+print(json.dumps(schema.asdict(), indent=4))
+print(ts.table_metadata_schemas)  #this does not show a schema for the metadata
+row_id = tables.individuals.add_row(0, metadata={"phenotype1": 1, "phenotype2": 2,}) #their unspecified argument is for the flags, default value is 0 https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata
+print(f"Row {row_id} added to the individuals table")
+row_id = tables.individuals.add_row(1, metadata={"phenotype1": 1, "phenotype2": 2,}) #their unspecified argument is for the flags, default value is 0 https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata
+print(f"Row {row_id} added to the individuals table")
+
+
+print(tables.individuals)
+print(tables)
+# print(tables.individuals.metadata_schema) #we were able to write stuff BUT this cleared all the other tables out, and doesn't work if I wan't to call metadata from ts.individual().metadata.:
+# print("Metadata for individual 0:", ts.individual(0).metadata)
+
+
+print(ts.tables.individuals) #so we're not actually writing to this! we are writing to a new table collection that is NOT the same as the tables that were saved when we ran the simulate() function. 
+# print(ts.tables)
+# 
+
+
+
+# ################let's see if we can force it to write to individuals that already exists
+# print("\n","\n","\n","\n")
+# print(json.dumps(schema.asdict(), indent=4))
+# ts.tables.individuals.metadata_schema = schema
+# row_id = ts.tables.individuals.add_row(0, metadata={"phenotype1": 1, "phenotype2": 2,})
+
+
+
+
+# phenotype_index = [i for i in range(len(phenotypes))]
+
+
+# for i in phenotype_index: 
+#     phenotype1_array = phenotypes[:,0]
+#     phenotype2_array = phenotypes[:,1]
+#     # print(phenotype1_array[i])
+#     # print(phenotype1_array[i].astype)
+#     # print(np.asscalar(phenotype1_array[i]))
+
+#     # tables.individuals.add_row(i, metadata= {"phenotype1": phenotype1_array[i], "phenotype2": phenotype2_array[i]})
+
+
+# print("tskit.IndividualTable:",tskit.IndividualTable)
+# print("ts.tables.individuals:",ts.tables.individuals)
+
+
+
 
