@@ -18,9 +18,9 @@ import matplotlib as plt
 from dataclasses import dataclass
 
 demography = msprime.Demography()
-graph = demes.load("no_ancestry.yaml")
+graph = demes.load("pop_split.yaml")
 
-mu = ((1e-7)*2)
+mu = ((1e-7)*5)
 rho = 1e-7
 bases = 1000
 
@@ -30,7 +30,7 @@ def simulate(mu, rho, graph):
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
 
 
-    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
+    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, random_seed = 1234) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
 
     return mts
 
@@ -193,17 +193,135 @@ def make_popfile(phenotypes_array):
     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
 
 
-    phenotypes_array = t.phenotypes
+    # phenotypes_array = constructor.phenotypes
     txt_name = "pop.txt"
 
     pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
+    # print(popdf)
     with open(txt_name, 'wb') as f:
         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
 
     return popdf
     # return phenotypes_array
+
+
+def add_metadata_to_treefile():
+    # Define a Python class to represent
+    # your metadata.
+    @dataclass
+    class MutationMetadata:
+        effect_sizes: list
+
+
+    # Define a method to allow the built-in json
+    # module to encode your class as json.
+    # This simply returns the dict representation.python 
+    # This is a modification from stuff at the json
+    # module doc site.
+    class MutationMetadataEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, MutationMetadata):
+                return obj.__dict__
+            # Base class default() raises TypeError:
+            return json.JSONEncoder.default(self, obj)
+
+    #make a new table collection to hold everything
+    # newtables = tskit.TableCollection(1.0) 
+    newtables = ts.dump_tables() #modifying a copy of the original tables in order to 
+
+
+    # tables.nodes.add_row(0, 0)  # flags, time
+    # tables.sites.add_row(1.0, "")  # position, ancestral state
+    # tables.mutations.add_row(0, 0, "")  # site, node, derived state
+
+    # Define schema
+    mutation_metadata_schema = tskit.metadata.MetadataSchema(
+        {
+            "codec": "json",
+            "type": "object",
+            "name": "Mutation metadata",
+            # See tskit docs for what proprties are allowed
+            "properties": {"effect_sizes": {"type": "array"}},
+        }
+    )
+
+
+    # Add schema to table
+    newtables.mutations.metadata_schema = mutation_metadata_schema
+
+
+    muts = constructor.muts.tolist()
+
+    metadata_column = []
+    print(muts)
+    for index, mut in enumerate(muts):
+        # newtables.nodes.add_row(0, 0)  # flags, time
+        # newtables.sites.add_row(index, "")  # position, ancestral state
+        # newtables.mutations.add_row(index, 0, "")  # site, node, derived state #these are necessary if you're starting from a new table, but since we're modifying the existing table instead, no need
+        
+        #Create a metadata object for each mutation in the list you're looping over
+        md = MutationMetadata(mut)
+        # print(md)
+        #convert it to json
+        md_as_json = bytes(json.dumps(md, cls=MutationMetadataEncoder), "utf-8")
+        # md_as_json = json.dumps(md, cls=MutationMetadataEncoder)
+        # print(md_as_json)
+        metadata_column.append(md_as_json)
+        
+        # # pack it
+        # # NOTE: I put md_as_json into a list here!!!
+        # #       You pass in a list of things to pack
+        # md, offsets = tskit.pack_bytes([md_as_json])
+        # this all prints looking basically perfect
+
+
+        # print("LOOP BREAK", "\n")
+    # print(metadata_column)
+    encoded_metadata_column = [
+        newtables.individuals.metadata_schema.validate_and_encode_row(r) for r in metadata_column
+    ]
+    md, md_offset = tskit.pack_bytes(encoded_metadata_column)
+    print(md)
+    # print(encoded_metadata_column)
+
+    # Efficiently rebuild the mutation table in-place (method 1)
+    newtables.mutations.set_columns(
+        site=ts.tables.mutations.site,
+        derived_state=ts.tables.mutations.derived_state,
+        derived_state_offset=ts.tables.mutations.derived_state_offset,
+        node=ts.tables.mutations.node,  # This is the last required one
+        time= ts.tables.mutations.time,
+        metadata=md,
+        metadata_offset=md_offset,
+    ) #rebuild using original tables for most arguments
+
+    # # Method 2
+    # mutations = tables.mutations.asdict()
+    # mutations["metadata"] = md
+    # mutations["metadata_offset"] = md_offset
+    # tables.mutations.set_columns(**mutations)
+    # # Confirm that things work
+    # for m in tables.mutations:
+    #     print(m)
+
+
+
+
+
+
+
+    
+    # print(tables.mutations)
+    # print(newtables.mutations)
+    # print(ts.tables.mutations)
+    # print(ts.tables)
+    print(newtables)
+    # print(a)
+    newtables.dump("output.trees")
+
+
 
 # def make_covar(): #an attempt to streamline the GWAS process
     # deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
@@ -227,18 +345,20 @@ ax = demesdraw.tubes(graph)
 ax.figure.savefig("A.svg")
 
 
+
 print("simulating genotypes under demographic model")
 ts = simulate(mu, rho, graph)
+print(ts.tables)
 
 print("writing treefile for downstream analysis")
 ts.dump("output.trees")
 
 
-print("making vcf for the sim")
-vcf_path = "genos.vcf"
+# print("making vcf for the sim") #hopefully not necessary 
+# vcf_path = "genos.vcf"
 n_dip_indv = int(ts.num_samples / 2) 
-indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
-make_vcf(vcf_path, indv_names)
+# indv_names = [f"tsk_{str(i)}indv" for i in range(n_dip_indv)]
+# make_vcf(vcf_path, indv_names)
 
 
 demes = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table. in this case, you just want the demes of the samples present at the end of the sim. (I think). SO regardless of pop_split.yaml or no_ancestry.yaml (whether ancestry is shared), demes A and B split off.
@@ -248,240 +368,18 @@ iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))] #number of individ
 print("simulating phenotypes from environmental and genetic effects")
 
 
-t = make_phenotypes()
-print("summed phenotypes", t.phenotypes)
+constructor = make_phenotypes()
+# print("summed phenotypes", t.phenotypes)
 
-print("mutation effect sizes",  t.muts)
+print("mutation effect sizes",  constructor.muts)
 
-print("making .txt file that contains individuals and phenotypes")
-make_popfile(t.phenotypes)
+# print(constructor.phenotypes)
+# print("making .txt file that contains individuals and phenotypes")
+make_popfile(constructor.phenotypes)
 
+print("dumping treefile WITH METADATA")
+add_metadata_to_treefile()
 
 
 
-# make_covar()
 
-
-
-
-
-# print(ts.tables)
-# print(ts.tables.mutations.derived_state)
-
-
-
-
-###############SCHEMAS 
-
-# print(ts.table_metadata_schemas)
-# print("\n","UNMODIFIED TABLES:", "\n")
-# # print(ts.tables) #what this and the above tell me is that there is metadata for the population, but not for the nodes, edges, sites, mutations, migrations, or individuals. So I want to make a schema for the individuals if i'm wanting to invoke phenotypes/add to it
-
-# schema = tskit.MetadataSchema({
-#     'codec': 'json',
-#     'additionalProperties': False,
-#     'properties': {'phenotype1': {'description': 'first phenotype value','type': 'number'}, #why not float? JSON does not like it. https://json-schema.org/understanding-json-schema/reference/numeric.html#number
-#                    'phenotype2': {'description': 'second phenotype value','type': 'number'}},
-#     'required': ['phenotype1', 'phenotype2'],
-#     'type': 'object',
-# }) #https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata. pretty certain this schema is correct
-
-
-
-
-
-
-
-# ###################writing following https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata. this initiates new tables and writes to the NEW individuals table, and NOT the one you access through the ts variable returned from the actual sim. It's separate.
-# tables = tskit.TableCollection(sequence_length=bases)  # make a new, empty set of tables
-# tables.individuals.metadata_schema = schema
-
-
-# # print(tables)
-# # print(ts)
-# # print("schemas:")
-# print(json.dumps(schema.asdict(), indent=4))
-# print(ts.table_metadata_schemas)  #this does not show a schema for the metadata
-# row_id = tables.individuals.add_row(0, metadata={"phenotype1": 1, "phenotype2": 2,}) #their unspecified argument is for the flags, default value is 0 https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata
-# print(f"Row {row_id} added to the individuals table")
-# row_id = tables.individuals.add_row(1, metadata={"phenotype1": 1, "phenotype2": 2,}) #their unspecified argument is for the flags, default value is 0 https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata
-# print(f"Row {row_id} added to the individuals table")
-
-
-# row_id = tables.mutations.add_row(node=node, site=site, metadata={"phenotype1": 1, "phenotype2": 2,})
-
-# print(tables.individuals)
-# print(tables)
-# print(tables.individuals.metadata_schema) #we were able to write stuff BUT this cleared all the other tables out, and doesn't work if I wan't to call metadata from ts.individual().metadata.:
-# print("Metadata for individual 0:", ts.individual(0).metadata)
-
-
-# print(ts.tables.individuals) #so we're not actually writing to this! we are writing to a new table collection that is NOT the same as the tables that were saved when we ran the simulate() function. 
-# print(ts.tables)
-# 
-
-
-
-# ################let's see if we can force it to write to individuals that already exists
-# print("\n","\n","\n","\n")
-# print(json.dumps(schema.asdict(), indent=4))
-# ts.tables.individuals.metadata_schema = schema
-# row_id = ts.tables.individuals.add_row(0, metadata={"phenotype1": 1, "phenotype2": 2,})
-
-
-
-
-# phenotype_index = [i for i in range(len(phenotypes))]
-
-
-# for i in phenotype_index: 
-#     phenotype1_array = phenotypes[:,0]
-#     phenotype2_array = phenotypes[:,1]
-#     # print(phenotype1_array[i])
-#     # print(phenotype1_array[i].astype)
-#     # print(np.asscalar(phenotype1_array[i]))
-
-#     # tables.individuals.add_row(i, metadata= {"phenotype1": phenotype1_array[i], "phenotype2": phenotype2_array[i]})
-
-
-# print("tskit.IndividualTable:",tskit.IndividualTable)
-# print("ts.tables.individuals:",ts.tables.individuals)
-
-
-# t_m = ts.tables.mutations
-# m = len(ts.tables.mutations) #https://tskit.dev/tskit/docs/stable/python-api.html
-# site = ts.tables.mutations.site
-# print(site)
-# node=ts.tables.mutations.node
-# derived_state=ts.tables.mutations.derived_state
-# time = ts.tables.mutations.time
-# d, off = tskit.pack_strings(["1"] * m)
-
-# site = np.arange(m, dtype=np.int32)
-
-# node = np.zeros(m, dtype=np.int32)
-# node=ts.tables.nodes
-# print(node)
-
-
-
-# metadata_schema = tskit.MetadataSchema({
-#     'codec': 'json',
-#     'additionalProperties': False,
-#     'properties': {'phenotype1_effect': {'description': 'first phenotype value','type': 'number'}, #why not float? JSON does not like it. https://json-schema.org/understanding-json-schema/reference/numeric.html#number
-#                    'phenotype2_effect': {'description': 'second phenotype value','type': 'number'}},
-#     'required': ['phenotype1_effect', 'phenotype2_effect'],
-#     'type': 'object',
-# }) #https://tskit.dev/tutorials/metadata.html#sec-tutorial-metadata. pretty certain this schema is correct
-
-
-# ts.tables.mutations.metadata_schema = metadata_schema
-
-
-
-
-
-
-# m = len(ts.tables.mutations) #https://tskit.dev/tskit/docs/stable/python-api.html
-# d, off = tskit.pack_strings(["1"] * m)
-# # row_id = tables.mutations.add_row(site=0,node=0, derived_state=1,parent=-1, metadata={"phenotype1": 1, "phenotype2": 2,})
-# # print(tables.mutations)
-
-# print(muteffects)
-# muteffects = muteffects.flatten() #flatten, as according to tskit docs, so we can use it in the metadata arg below
-# print(muteffects)
-# #need to have the list be in bytes format to be able to pack the bytes
-# muteffects_bytes = muteffects.tobytes() #this doesn't seem to be formatted correctly for tskit.pack_bytes, as the bytes format you get looks quite different from what's specified here:
-# print(muteffects_bytes)
-# # a2 = np.frombuffer(muteffects_bytes, dtype=muteffects.dtype)
-# # print(a2)
-# a = tskit.pack_bytes(muteffects_bytes)
-
-
-
-# ts.tables.mutations.set_columns(site=site, node=node, derived_state=derived_state,derived_state_offset=off, time=time)
-
-
-
-#put your own data into metadata so that when you make your downstream, you can pull all of the information you need from the tree sequence metadata instead of writing to a million files
-
-
-# Define a Python class to represent
-# your metadata.
-@dataclass
-class MutationMetadata:
-    effect_sizes: list
-
-
-# Define a method to allow the built-in json
-# module to encode your class as json.
-# This simply returns the dict representation.python 
-# This is a modification from stuff at the json
-# module doc site.
-class MutationMetadataEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, MutationMetadata):
-            return obj.__dict__
-        # Base class default() raises TypeError:
-        return json.JSONEncoder.default(self, obj)
-
-
-#make a new table collection to hold everything
-tables = tskit.TableCollection(1.0)
-
-tables.nodes.add_row(0, 0)  # flags, time
-tables.sites.add_row(1.0, "")  # position, ancestral state
-tables.mutations.add_row(0, 0, "")  # site, node, derived state
-
-# Define schema
-mutation_metadata_schema = tskit.metadata.MetadataSchema(
-    {
-        "codec": "json",
-        "type": "object",
-        "name": "Mutation metadata",
-        # See tskit docs for what proprties are allowed
-        "properties": {"effect_sizes": {"type": "array"}},
-    }
-)
-
-# Add schema to table
-tables.mutations.metadata_schema = mutation_metadata_schema
-
-# Create a metadata object for the first mutation
-md = MutationMetadata([1, 2, 3, 4])
-
-# convert it to json
-md_as_json = bytes(json.dumps(md, cls=MutationMetadataEncoder), "utf-8")
-
-# pack it
-# NOTE: I put md_as_json into a list here!!!
-#       You pass in a list of things to pack
-md, offsets = tskit.pack_bytes([md_as_json])
-
-# Efficiently rebuild the mutation table in-place
-tables.mutations.set_columns(
-    site=tables.mutations.site,
-    derived_state=tables.mutations.derived_state,
-    derived_state_offset=tables.mutations.derived_state_offset,
-    node=tables.mutations.node,  # This is the last required one
-    metadata=md,
-    metadata_offset=offsets,
-)
-
-# Confirm that things work
-for m in tables.mutations:
-    print(m)
-
-print(tables.mutations)
-#print(tables)
-
-
-# # Method 2
-# mutations = tables.mutations.asdict()
-# mutations["metadata"] = md
-# mutations["metadata_offset"] = offsets
-# tables.mutations.set_columns(**mutations)
-# # Confirm that things work
-# for m in tables.mutations:
-#     print(m)
-    
