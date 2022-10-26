@@ -18,7 +18,7 @@ import matplotlib as plt
 from dataclasses import dataclass
 
 demography = msprime.Demography()
-graph = demes.load("pop_split.yaml")
+graph = demes.load("no_ancestry.yaml")
 
 mu = ((1e-7)*5)
 rho = 1e-7
@@ -30,8 +30,8 @@ def simulate(mu, rho, graph):
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
 
 
-    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, random_seed = 1234) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
-
+    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, ) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
+    #random_seed = 1234
     return mts
 
 
@@ -82,9 +82,8 @@ class phenotype_constructor:
 
         phenos  = 2 #make this into args...
         #make effect size distributions:
-        # print("simulating phenotypes as if purely environmental")
-        mult_random = multivariate_normal.rvs(0, 1, (len(iid))) #assigns a random effect size to every individual in one big array. NOTE that this is the same as above, remove this redundancy.
-        
+
+
         # print("simulating mutation effects")
         # print("number of mutations:", len(ts.tables.mutations))
 
@@ -134,13 +133,13 @@ class phenotype_constructor:
             nodes_array.append(node)
         # print(nodes_array)
 
-        array = np.column_stack((indv_array, nodes_array))
-        # print(array)
+        indvs_and_nodes_array = np.column_stack((indv_array, nodes_array))
+        # print(indvs_and_nodes_array)
 
 
 
         #create an empty numpy array to put the effect sizes in. It will return a table with # of phenotypes column and # of individuals rows
-        phenotypes_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
+        genetic_effects_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
         # print("empty phenotypes array:", phenotypes_array, "\n")
         
 
@@ -159,52 +158,76 @@ class phenotype_constructor:
                 # print(mutation.node)
 
                 #make a 1-D numpy array with as many zeros as there are phenotypes
-                ncopies = np.zeros(len(phenotypes_array)) #one zero for every individual in the sample at the end of the sim
+                ncopies = np.zeros(len(genetic_effects_array)) #one zero for every individual in the sample at the end of the sim
 
                 #loop over all samples that have a given mutation. If you don't include nodes (mutation.node) here, you loop over ALL samples that contain ANY mutation, so it will be the same full list of samples, iterated over m # of mutations times. Including nodes does it by the sample.
                 for sample_node in tree.samples(mutation.node):
                     # print("this mutation is in sample node",sample_node)
 
                     #find which individuals have 0, 1, or 2 mutations
-                    if sample_node in array[:,1:]:
-                        item = (array[sample_node]) #now I have the individual and node # together for each one that has a mutation
+                    if sample_node in indvs_and_nodes_array[:,1:]:
+                        item = (indvs_and_nodes_array[sample_node]) #now I have the individual and node # together for each one that has a mutation
                         individual_with_mut = item[:1]
                         # print(*individual_with_mut) #entechin.com/how-to-print-a-list-without-square-brackets-in-python/#:~:text=use%20asterisk%20'*'%20operator%20to%20print%20a%20list%20without%20square%20brackets
                         ncopies[individual_with_mut] += 1
                         
                         # print("phenotypic value of the indiv preexisting from environmental effect:",phenotypes_array[individual_with_mut])
                         # print("mutation value", muteffects[mutation.id])
-                        phenotypes_array[individual_with_mut] += muteffects[mutation.id]
+                        genetic_effects_array[individual_with_mut] += muteffects[mutation.id]
                 # print("copies of the mut present in each individual:", ncopies)
         
+        
+
+
+        #make environmental effects:
+        #getting a seed for the random number generator??? https://stackoverflow.com/questions/16016959/scipy-stats-seed
+        environmental_effects = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos)
+        # env_generator = random.normal(mean=0, seed =1234)
+        
+        env_generator = rng.normal(loc=means, scale=1, size = (n_dip_indv,phenos)) #scale is the standard deviation
+        # print("environmental effects:",env_generator)
+        # print("genetic effects:", genetic_effects_array)
+        
+        # environmental_effects 
+        # environmental_effects = multivariate_normal.rvs(0, 1, (len(iid))) #assigns a random,environmental value to every individual in one big array. 
+        #the .rvs method here confuses me and I'd like to be able to set a seed- figure that out at some point 
+        # print("ENVIRONMENTAL EFFECTS:", environmental_effects)
+        #conceptually, you're going to have to decide how the environmental effects are going to play out. For now, just have the environment have identical effects on both phenotypes for an individual. 
+
+
+        summed_phenotypes = np.add(genetic_effects_array, env_generator)
+        # print(summed_phenotypes)
+
         # print("summed phenotypes:", "\n", phenotypes_array)
         # return phenotypes_array, muteffects
-            self.phenotypes = phenotypes_array
-            self.muts = muteffects
+        self.environmental = env_generator
+        self.phenotypes = summed_phenotypes
+        self.muts = muteffects #make sure these are outside of the for() loop!
+        # print("PHENOTYPES",phenotypes_array) 
 
 def make_phenotypes():
     return phenotype_constructor()
 
 
-def make_popfile(phenotypes_array):
+# def make_popfile(phenotypes_array):
 
-    deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
-    #flatten
-    deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
+#     deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
+#     #flatten
+#     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
 
 
-    # phenotypes_array = constructor.phenotypes
-    txt_name = "pop.txt"
+#     # phenotypes_array = constructor.phenotypes
+#     txt_name = "pop.txt"
 
-    pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-    popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
-    # print(popdf)
-    with open(txt_name, 'wb') as f:
-        f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
-        np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
+#     pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
+#     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
+#     # print(popdf)
+#     with open(txt_name, 'wb') as f:
+#         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
+#         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
 
-    return popdf
-    # return phenotypes_array
+#     return popdf
+#     return phenotypes_array
 
 
 def add_metadata_to_treefile():
@@ -213,6 +236,12 @@ def add_metadata_to_treefile():
     @dataclass
     class MutationMetadata:
         effect_sizes: list
+
+    @dataclass 
+    class IndividualMetadata:
+        full_phenotypes: list
+        environmental_effects: list
+        # env_effects: list   #might have to do some work to get  
 
 
     # Define a method to allow the built-in json
@@ -227,16 +256,22 @@ def add_metadata_to_treefile():
             # Base class default() raises TypeError:
             return json.JSONEncoder.default(self, obj)
 
+    class IndividualMetadataEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, IndividualMetadata):
+                return obj.__dict__
+            return json.JSONEncoder.default(self, obj)
+
     #make a new table collection to hold everything
     # newtables = tskit.TableCollection(1.0) 
-    newtables = ts.dump_tables() #modifying a copy of the original tables in order to 
+    newtables = ts.dump_tables() #modifying a copy of the original tables in order to be able to overwrite 
 
 
     # tables.nodes.add_row(0, 0)  # flags, time
     # tables.sites.add_row(1.0, "")  # position, ancestral state
     # tables.mutations.add_row(0, 0, "")  # site, node, derived state
 
-    # Define schema
+    # Define schema. It has to be a dictionary of JSON objects.
     mutation_metadata_schema = tskit.metadata.MetadataSchema(
         {
             "codec": "json",
@@ -247,15 +282,30 @@ def add_metadata_to_treefile():
         }
     )
 
+    #making a dictionary with two key:value pairs. Each will be a list of values for each phenotype class
+    individual_metadata_schema = tskit.metadata.MetadataSchema(
+        {
+            "codec": "json",
+            "type": "object",
+            "name": "Individual metadata",
+            # See tskit docs for what proprties are allowed
+            "properties": {"full_phenotypes": {"type": "array"}, "environmental_effects":{"type":"array"}},
+        }
+    )
+    
+# "environmental_effects": {"type":"array"}
+
 
     # Add schema to table
     newtables.mutations.metadata_schema = mutation_metadata_schema
+    newtables.individuals.metadata_schema = individual_metadata_schema
 
 
-    muts = constructor.muts.tolist()
 
+###################################################making mutataions into a format that works
+    muts = constructor.muts.tolist() #taking just the muts from the constructor class
     metadata_column = []
-    print(muts)
+    # print(muts)
     for index, mut in enumerate(muts):
         # newtables.nodes.add_row(0, 0)  # flags, time
         # newtables.sites.add_row(index, "")  # position, ancestral state
@@ -273,18 +323,24 @@ def add_metadata_to_treefile():
         # # pack it
         # # NOTE: I put md_as_json into a list here!!!
         # #       You pass in a list of things to pack
-        # md, offsets = tskit.pack_bytes([md_as_json])
-        # this all prints looking basically perfect
+        # md, md_offset = tskit.pack_bytes([md_as_json]) #this doesn't work inside the loop, as each time the tables get rese
+        
+
+
 
 
         # print("LOOP BREAK", "\n")
-    # print(metadata_column)
-    encoded_metadata_column = [
-        newtables.individuals.metadata_schema.validate_and_encode_row(r) for r in metadata_column
-    ]
-    md, md_offset = tskit.pack_bytes(encoded_metadata_column)
-    print(md)
-    # print(encoded_metadata_column)
+
+    ##########################validate_and_encode step that appears to be unnecessary? 
+    # encoded_metadata_column = [
+    #     newtables.individuals.metadata_schema.validate_and_encode_row(r) for r in metadata_column
+    # ]
+    # md, md_offset = tskit.pack_bytes(encoded_metadata_column)
+    #this is the same as the step inside the loop..
+    md, md_offset = tskit.pack_bytes(metadata_column)#looks like it doesn't matter which one you use, so this may circumvent the issue you're having with encoded_metadata_col;umn using the individuals table and issuing an object problem??????
+    #this works, in a way that the encode_and_validate step seems to not once you include individual metadata (something to do with how the mutation metadata is referencing the individual metadata). 
+    
+
 
     # Efficiently rebuild the mutation table in-place (method 1)
     newtables.mutations.set_columns(
@@ -297,29 +353,89 @@ def add_metadata_to_treefile():
         metadata_offset=md_offset,
     ) #rebuild using original tables for most arguments
 
-    # # Method 2
-    # mutations = tables.mutations.asdict()
-    # mutations["metadata"] = md
-    # mutations["metadata_offset"] = md_offset
-    # tables.mutations.set_columns(**mutations)
-    # # Confirm that things work
-    # for m in tables.mutations:
-    #     print(m)
+
+
+
+
+    ###################################################################set it up for environmental effects 
+    phenotypes = constructor.phenotypes.tolist()
+    environmental_effects = constructor.environmental.tolist()
+
+
+    print(phenotypes)
+    # print("get environmental effects from constructor function", environmental_effects)
+    metadata_column = []
+    # print(muts)
+    # for index, phenotype in enumerate(phenotypes):
+    #     md = IndividualMetadata(phenotype,environmental_effects)#this almost works, but what it appends is the correct phenotype, then ALL environmental effects for all individuals.
+    #     md_as_json = bytes(json.dumps(md, cls=IndividualMetadataEncoder), "utf-8")
+    #     metadata_column.append(md_as_json)
+        
+
+    # for index, phenotype in enumerate(phenotypes):
+    #     print(phenotypes)
+
+
+    for index, phenotype in enumerate(phenotypes):
+        md = IndividualMetadata(phenotype,environmental_effects[index])#this almost works, but what it appends is the correct phenotype, then ALL environmental effects for all individuals.
+        md_as_json = bytes(json.dumps(md, cls=IndividualMetadataEncoder), "utf-8")
+        metadata_column.append(md_as_json)
+
+    # for index, environmental_effect in enumerate(environmental_effects):
+    #     md = IndividualMetadata(environmental_effect)#this almost works, but what it appends is the correct phenotype, then ALL environmental effects for all individuals.
+    #     md_as_json = bytes(json.dumps(md, cls=IndividualMetadataEncoder), "utf-8")
+    #     metadata_column.append(md_as_json)
+
+ 
+
+    md, md_offset = tskit.pack_bytes(metadata_column)#looks like it doesn't matter which one you use, so this may circumvent the issue you're having with encoded_metadata_col;umn using the individuals table and issuing an object problem??????
+    # print(ts.tables.individuals.flags)
+    newtables.individuals.set_columns(
+        flags=ts.tables.individuals.flags,
+        location=None,
+        location_offset=None,
+        parents=None,
+        parents_offset=None,
+        metadata=md,
+        metadata_offset=md_offset)
+
+        
+
+
+
+    #     site=ts.tables.individuals.site,
+    #     derived_state=ts.tables.individuals.derived_state,
+    #     derived_state_offset=ts.tables.individuals.derived_state_offset,
+    #     node=ts.tables.individuals.node,  # This is the last required one
+    #     time= ts.tables.individuals.time,
+    #     metadata=md,
+    #     metadata_offset=md_offset,
+    # ) #rebuild using original tables for most arguments
+
+
+
+    # # Efficiently rebuild the mutation table in-place (method 1)
+    # newtables.mutations.set_columns(
+    #     site=ts.tables.mutations.site,
+    #     derived_state=ts.tables.mutations.derived_state,
+    #     derived_state_offset=ts.tables.mutations.derived_state_offset,
+    #     node=ts.tables.mutations.node,  # This is the last required one
+    #     time= ts.tables.mutations.time,
+    #     metadata=md,
+    #     metadata_offset=md_offset,
+    # ) #rebuild using original tables for most arguments
+
+    # phenotypes = constructor.phenotypes.tolist()
 
 
 
 
 
-
-
-    
-    # print(tables.mutations)
-    # print(newtables.mutations)
-    # print(ts.tables.mutations)
-    # print(ts.tables)
     print(newtables)
-    # print(a)
+
+    # print(newtables)
     newtables.dump("output.trees")
+
 
 
 
@@ -348,7 +464,7 @@ ax.figure.savefig("A.svg")
 
 print("simulating genotypes under demographic model")
 ts = simulate(mu, rho, graph)
-print(ts.tables)
+# print(ts.tables)
 
 print("writing treefile for downstream analysis")
 ts.dump("output.trees")
@@ -369,17 +485,13 @@ print("simulating phenotypes from environmental and genetic effects")
 
 
 constructor = make_phenotypes()
-# print("summed phenotypes", t.phenotypes)
+# print("summed phenotypes", constructor.phenotypes)
 
-print("mutation effect sizes",  constructor.muts)
+# print("mutation effect sizes",  constructor.muts)
 
 # print(constructor.phenotypes)
 # print("making .txt file that contains individuals and phenotypes")
-make_popfile(constructor.phenotypes)
+# make_popfile(constructor.phenotypes)
 
 print("dumping treefile WITH METADATA")
 add_metadata_to_treefile()
-
-
-
-

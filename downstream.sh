@@ -95,9 +95,12 @@ plink2 --glm --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  
 #doing it with all variants to start with: 
 # plink2 --score convert_2_pgen.snps.freq.afreq list-variants --pfile convert_2_pgen --pheno pop.txt --out testing --score-col-nums 3-12
 # plink2 --score gwas.phenotype1.glm.linear list-variants --pfile convert_2_pgen --pheno pop.txt --out testing --score-col-nums 3-12
-plink2 --score genos.vcf list-variants header --pfile convert_2_pgen --pheno pop.txt --out testing --score-col-nums 3-12
+# plink2 --score genos.vcf list-variants header --pfile convert_2_pgen --pheno pop.txt --out testing --score-col-nums 3-12
 
-
+#how to get PGS from your GLM: you specify the gwas you want to get PGS for, and three columns: variant ID, allele code (kevin suggested I use the minor allele), and the column that actually contains the numbers to score from. For this, it'll be the betas.   
+plink2 --score gwas.phenotype1.glm.linear 3 5 9 --pfile convert_2_pgen --pheno pop.txt --out PGS
 
 #make effect size vs. p-value plots
 #phenotype 1: 
+
+# plink2 --score betas.file list-variants --pfile convert_2_pgen --pheno pop.txt --out PGS

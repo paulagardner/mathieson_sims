@@ -47,74 +47,133 @@ def make_vcf(vcf_path, indv_names):
 
 
 
-def reconstruct_phenotypes():
-    #get effect sizes for each mutation from metadata: 
-    muteffects = []
-    for index, m in enumerate(ts.mutations()):
-        # print(index,m.metadata)
-        for value in m.metadata.values():
-            muteffects.append(value)
-            phenos = len(value) #get number of phenotypes in each list so you can pass it down to the loop that needs it to calculate an array size 
+# def reconstruct_phenotypes(): #this should be rendered obsolete by actually putting the phenotypes in the metadata
+#     #get effect sizes for each mutation from metadata: 
+#     muteffects = []
+#     for index, m in enumerate(ts.mutations()):
+#         # print(index,m.metadata)
+#         for value in m.metadata.values():
+#             muteffects.append(value)
+#             phenos = len(value) #get number of phenotypes in each list so you can pass it down to the loop that needs it to calculate an array size 
 
-    print(muteffects)
-    print(phenos)
-
-
+#     # print(muteffects)
+#     # print(phenos)
 
 
 
-    #make phenotypes
-    indv_array = ts.tables.nodes.individual
-            # print(indv_array)
-
-    nodes_array = []
-    for node, individual in enumerate(ts.tables.nodes.individual):
-        nodes_array.append(node)
-    # print(nodes_array)
-
-    array = np.column_stack((indv_array, nodes_array))
-    # print(array)
-    # phenos = 
-    #create an empty numpy array to put the effect sizes in. It will return a table with # of phenotypes column and # of individuals rows
-    phenotypes_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
-
-    # print("empty phenotypes array:", phenotypes_array, "\n")
 
 
+#     #make phenotypes
+#     indv_array = ts.tables.nodes.individual
+#             # print(indv_array)
 
-    #make an array to track whether an individual is homozygous or heterozygous for a mutation at a locus
-    for tree in ts.trees():
-    #     print("a")
-    #     #loop over all mutations that appear in a tree
-        for mutation in tree.mutations():
-            nodes = mutation.node
-            #make a 1-D numpy array with as many zeros as there are phenotypes
-            ncopies = np.zeros(len(phenotypes_array)) #one zero for every individual in the sample at the end of the sim  
-            #loop over all samples that have a given mutation. If you don't include nodes (mutation.node) here, you loop over ALL samples that contain ANY mutation, so it will be the same full list of samples, iterated over m # of mutations times. Including nodes does it by the sample.
-            for sample_node in tree.samples(mutation.node):
-                #find which individuals have 0, 1, or 2 mutations
-                if sample_node in array[:,1:]:
-                    item = (array[sample_node]) #now I have the individual and node # together for each one that has a mutation
-                    individual_with_mut = item[:1]
-                    # print(*individual_with_mut) #entechin.com/how-to-print-a-list-without-square-brackets-in-python/#:~:text=use%20asterisk%20'*'%20operator%20to%20print%20a%20list%20without%20square%20brackets
-                    ncopies[individual_with_mut] += 1
+#     nodes_array = []
+#     for node, individual in enumerate(ts.tables.nodes.individual):
+#         nodes_array.append(node)
+#     # print(nodes_array)
+
+#     array = np.column_stack((indv_array, nodes_array))
+#     # print(array)
+#     # phenos = 
+#     #create an empty numpy array to put the effect sizes in. It will return a table with # of phenotypes column and # of individuals rows
+#     phenotypes_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
+
+#     # print("empty phenotypes array:", phenotypes_array, "\n")
+
+
+
+#     #make an array to track whether an individual is homozygous or heterozygous for a mutation at a locus
+#     for tree in ts.trees():
+#     #     print("a")
+#     #     #loop over all mutations that appear in a tree
+#         for mutation in tree.mutations():
+#             nodes = mutation.node
+#             #make a 1-D numpy array with as many zeros as there are phenotypes
+#             ncopies = np.zeros(len(phenotypes_array)) #one zero for every individual in the sample at the end of the sim  
+#             #loop over all samples that have a given mutation. If you don't include nodes (mutation.node) here, you loop over ALL samples that contain ANY mutation, so it will be the same full list of samples, iterated over m # of mutations times. Including nodes does it by the sample.
+#             for sample_node in tree.samples(mutation.node):
+#                 #find which individuals have 0, 1, or 2 mutations
+#                 if sample_node in array[:,1:]:
+#                     item = (array[sample_node]) #now I have the individual and node # together for each one that has a mutation
+#                     individual_with_mut = item[:1]
+#                     # print(*individual_with_mut) #entechin.com/how-to-print-a-list-without-square-brackets-in-python/#:~:text=use%20asterisk%20'*'%20operator%20to%20print%20a%20list%20without%20square%20brackets
+#                     ncopies[individual_with_mut] += 1
                     
-                    # print("phenotypic value of the indiv preexisting from environmental effect:",phenotypes_array[individual_with_mut])
-                    # print("mutation value", muteffects[mutation.id])
-                    phenotypes_array[individual_with_mut] += muteffects[mutation.id]
+#                     # print("phenotypic value of the indiv preexisting from environmental effect:",phenotypes_array[individual_with_mut])
+#                     # print("mutation value", muteffects[mutation.id])
+#                     phenotypes_array[individual_with_mut] += muteffects[mutation.id]
+
     
-    return phenotypes_array
+#     return phenotypes_array
+
+class phenotypes:
+    def __init__(self): #I think by writing the phenotypes into the sim, you're making the phenotype reconstructor obsolete????????
+        muteffects = []
+        for index, m in enumerate(ts.mutations()):
+            # print(index,m.metadata)
+            for value in m.metadata.values():
+                muteffects.append(value)
+                phenos = len(value) #get number of phenotypes in each list so you can pass it down to the loop that needs it to calculate an array size 
+
+
+
+        phenotypes_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
+        print("empty phenotypes array",phenotypes_array)
+        # for tree in ts.trees():
+        #     for individual in tree.individuals():
+        #         print(metadata)
+
+        # print("table", ts.tables.individuals)
+        # print(ts.tables.individuals.metadata)
+        # for i in ts.tables.individuals:
+        #     print(i.metadata)
+        environmental_effects = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
+
+        for index, i in enumerate(ts.tables.individuals):
+            # print(i.metadata)
+            # print("loop")
+            # print((i.metadata)[value] for value in i.metadata)
+            # print("loop")
+            # print(*(i.metadata).values()) #you run into issues if you don't include the parenthesis around i.metadata. HOWEVER doing it like this only works with the print statement 
+            # print((i.metadata)['full_phenotypes']) #get the values for the key you want    
+            phenotypes_array[index] += (i.metadata)['full_phenotypes']
+            environmental_effects[index] += (i.metadata)['environmental_effects']
+        
+        # print(phenotypes_array)
+        # print(environmental_effects)
+
+        
+        # for index, i in enumerate(ts.individuals()):
+        #     print(i.metadata)
+            # for i.metadata():
+            #     print('a')
+
+        # array = []
+        # for i in ts.individuals():
+            # array.append(i.metadata)
+            # print(i.metadata)
+            # print(i.metadata)
+            # for key in i.metadata:
+            #     print(key)
+            # for key in ts.individuals[i]:
+            #     print(key)
+        # print(array)
+        # print(ts.individuals.metadata)
+
+
+        self.full_phenotypes = phenotypes_array
+        self.environmental_effects = environmental_effects
+
+
+def get_phenotypes():
+    return phenotypes()
 
 
 
 
 
-
-
-
-def make_popfile(phenotypes_array):
-
-    deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
+def make_popfile(phenotypes_array): #not sure why this works, I would've thought I would have to call self.full_phenotypes here???
+    deme_id=[[i]*deme_size for i in range(0,populations_at_end)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
     #flatten
     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
 
@@ -122,79 +181,25 @@ def make_popfile(phenotypes_array):
     
     # phenotypes_array = phenotypes_array
     txt_name = "pop.txt"
-    pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-    # print(phenotypes_array)
-
-    # pheno_1 = phenotypes_array[:,0]
-    # pheno_2 = phenotypes_array[:,1]
-
-    # print(pheno_1, pheno_2)
-    # popdf = np.hstack([fid, iid, deme_id, pheno_1, pheno_2])
+    full_pheno_1, full_pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
+    popdf = np.transpose([fid, iid, deme_id, full_pheno_1, full_pheno_2]) 
     # print(popdf)
-    print(len(fid), len(iid), len(deme_id), len(pheno_1), len(pheno_2))
-    popdf = np.vstack([fid, iid, deme_id, pheno_1, pheno_2]) 
-    print(popdf)
-    
-    # popdf = np.vstack([fid, iid, deme_id, pheno_1, pheno_2])
-    # with open(txt_name, 'wb') as f:
-    #     f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
-    #     np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
-
-
-# def make_popfile(phenotypes_array):
-
-#     deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
-#     #flatten
-#     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
-
-
-#     # phenotypes_array = constructor.phenotypes
-#     txt_name = "pop.txt"
-
-#     pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-#     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
-#     with open(txt_name, 'wb') as f:
-#         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
-#         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
-
-#     return popdf
-#     # return phenoty
 
     
 
 
 
+    with open(txt_name, 'wb') as f:
+        f.write(b'FID\tIID\tdeme_id\tfull_phenotype1\tfull_phenotype2\n') 
+        np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
+
+
+# def make_datafiles(phenotypes_array, environmental_effects):
+#     deme_id=[[i]*deme_size for i in range(0,populations_at_end)
+#     deme_id=[item for sublist in deme_id for item in sublist]
 
 
 
-# print(phenotypes_array)
-
-
-
-# for m in ts.mutations():
-#     print(m.metadata)
-
-# print(ts.tables.mutations.metadata)
-# print(ts.table_metadata_schemas.mutations)
-# print("Metadata for individual 0:", ts.individual(0).metadata)
-# print("Metadata for individual 0:", ts.tables.individuals[0].metadata)  # Table access
-
-# for m in ts.tables.mutations.metadata: #this prints the array used to construct the metadata, so not what you want
-#     print(m)
-
-
-
-
-
-
-
-
-
-
-
-
-
-print(ts.tables)
 print(ts.num_samples)
 
 
@@ -209,13 +214,34 @@ make_vcf(vcf_path, indv_names)
 
 
 print("making .txt file that contains individuals and phenotypes")
-deme_size  = 25 #harcoding first to check if it works
-demes = 2 ###########need to figure out how to not have these hardcoded
-fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))]
-iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))] #number of individuals in the sample
-phenotypes_array = reconstruct_phenotypes()
-print(phenotypes_array)
+#find how many demes are present at the end of the sim
+print(type(ts.tables.nodes))
+populations = ts.tables.nodes.population
+times = ts.tables.nodes.time
+array = np.column_stack((populations, times))
+present_nodes = array[array[:,1] == 0] #sort to get only those nodes present at the end of the sim
+populations_at_end = len(set(present_nodes[:,0])) #length of the SET of the populations column in filtered set. This gives you number of demes/populations at end, regardless of ancestral nodes
 
+#make a list of individuals in each deme. The demes must be equal in size for this to work
+individuals_at_end = len(present_nodes)
+print(individuals_at_end)
+deme_size = int(individuals_at_end / (2*populations_at_end)) #divide by 2 because nodes represent haploid genomes in diploid organisms. 
+
+
+#use deme sizes and number of demes to create IDs that plink will understand 
+fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*populations_at_end))]
+iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*populations_at_end))] #number of individuals in the sample
+
+constructor = get_phenotypes() #will have to rewrite this if you're returning multiple values
+
+# phenotypes_array = reconstruct_phenotypes() #obsolete????
 
 print("simulating phenotypes from environmental and genetic effects")
-make_popfile(phenotypes_array)
+make_popfile(constructor.full_phenotypes)
+
+# print(ts.tables.individuals.metadata)#these will print as the non-decoded versions
+# print(ts.tables.mutations.metadata)
+# for index, m in enumerate(ts.mutations()):
+#     print(index,m.metadata)
+# for index, i in enumerate(ts.individuals()):
+#     print(i.metadata)
