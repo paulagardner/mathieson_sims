@@ -1,0 +1,26 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --extract convert_2_pgen.snps.snplist
+  --out overall_PCA
+  --pca
+  --pfile convert_2_pgen
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Tue Aug 30 13:35:01 2022
+
+Random number seed: 1661891701
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+20 samples (0 females, 0 males, 20 ambiguous; 20 founders) loaded from
+convert_2_pgen.psam.
+11 variants loaded from convert_2_pgen.pvar.
+Note: No phenotype data present.
+--extract: 11 variants remaining.
+Error: This run requires decent allele frequencies, but they aren't being
+loaded with --read-freq, and less than 50 samples are available to impute them
+from.
+You should generate (with --freq) or obtain an allele frequency file based on a
+larger similar-population reference dataset, and load it with --read-freq.
+
+End time: Tue Aug 30 13:35:01 2022

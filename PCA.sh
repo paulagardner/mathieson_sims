@@ -5,19 +5,20 @@ conda activate mathieson_sims
 
 python model.py
 
+#running the model script should output a .pop and .vcf file.  
+
+#convert the VCF into a format that plink can use (pgen). Skipping a splitting step the mathieson sims uses
+#you will get 'no phenotype data present' even though you have it--- it's just in the pop.txt file, instead of the vcf! I *think* it's not necessary just for the PCA. 
+plink2 --vcf genos.vcf --double-id --make-pgen --out convert_2_pgen 
 
 
-#convert to PLINK format. skipping splitting data step for now
-plink2 --double-id --make-pgen --out convert_2_pgen --vcf output_geno.vcf.gz
-
-
-
-# plink2 --vcf output_geno.vcf.gz --set-missing-var-ids @:# --make-pgen --double-id --out convert_2_pgen_test  #the second half shouldn't read as commented out.... but this is what makes the ID column issue you were having diappear
+#old step used to fill in IDs before I was assigning id #s to the 
+# plink2 --vcf output_geno.vcf.gz --set-missing-var-ids @:# --make-pgen --double-id --out convert_2_pgen_test  #the second half shouldn't read as commented out.... but this is what makes the ID column issue you were having disappear
 #https://www.cog-genomics.org/plink/2.0/data#set_all_var_ids
 
 
 
-#START skip here for just running a GWAS without anything filtered
+#START skipping this for just running a GWAS without anything filtered
 #just copying their filter rare variants step
 # plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen_test --write-snplist
 plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen --write-snplist allow-dups
@@ -35,6 +36,8 @@ plink2 --pfile convert_2_pgen --extract rare_variants_filter.snplist --pca --out
 
 
 ###########END skip
+
+
 #their step again: calculate allele frequencies:
 #And now it seems they went back and calculated allele frequencies for everything by just making a snplist of EVERYTHING, no variants filtered, then just running freq on it: 
 plink2 --pfile convert_2_pgen --mac 1 --write-snplist allow-dups --out convert_2_pgen.snps

@@ -1,0 +1,27 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --glm
+  --out gwas
+  --pfile convert_2_pgen
+  --pheno pop.txt
+  --read-freq convert_2_pgen.snps.freq.afreq
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Thu Oct 27 16:30:45 2022
+
+Random number seed: 1666913445
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+50 samples (0 females, 0 males, 50 ambiguous; 50 founders) loaded from
+convert_2_pgen.psam.
+25 variants loaded from convert_2_pgen.pvar.
+5 phenotypes loaded (1 binary, 4 quantitative).
+--read-freq: PLINK 2 --freq file detected.
+--read-freq: Frequencies for 25 variants loaded.
+--glm linear regression on quantitative phenotypes #1-4: done.
+Results written to gwas.<phenotype name>.glm.linear .
+--glm: Skipping case/control phenotype 'deme_id' since all samples are
+controls.
+
+End time: Thu Oct 27 16:30:45 2022

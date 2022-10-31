@@ -1,0 +1,26 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --double-id
+  --make-pgen
+  --out convert_2_pgen
+  --vcf genos.vcf
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Thu Oct 27 16:22:48 2022
+
+Random number seed: 1666912968
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+--vcf: 25 variants scanned.
+--vcf: convert_2_pgen-temporary.pgen + convert_2_pgen-temporary.pvar +
+convert_2_pgen-temporary.psam written.
+50 samples (0 females, 0 males, 50 ambiguous; 50 founders) loaded from
+convert_2_pgen-temporary.psam.
+25 variants loaded from convert_2_pgen-temporary.pvar.
+Note: No phenotype data present.
+Writing convert_2_pgen.psam ... done.
+Writing convert_2_pgen.pvar ... done.
+Writing convert_2_pgen.pgen ... done.
+
+End time: Thu Oct 27 16:22:48 2022

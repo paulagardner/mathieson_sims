@@ -1,0 +1,27 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --out PGS
+  --pfile convert_2_pgen
+  --pheno pop.txt
+  --score gwas.phenotype1.glm.linear 3 5 9
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Thu Oct 27 16:30:02 2022
+
+Random number seed: 1666913402
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+50 samples (0 females, 0 males, 50 ambiguous; 50 founders) loaded from
+convert_2_pgen.psam.
+25 variants loaded from convert_2_pgen.pvar.
+5 phenotypes loaded (1 binary, 4 quantitative).
+Calculating allele frequencies... done.
+Warning: 1 --score file entry was skipped due to a missing variant ID, and 10
+were skipped due to mismatching allele codes.
+(Add the 'list-variants' modifier to see which variants were actually used for
+scoring.)
+--score: 7 variants processed.
+--score: Results written to PGS.sscore .
+
+End time: Thu Oct 27 16:30:02 2022

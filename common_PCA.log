@@ -1,0 +1,27 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --extract common_variants_filter.snplist
+  --out common_PCA
+  --pca
+  --pfile convert_2_pgen
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Fri Sep 23 18:26:14 2022
+
+Random number seed: 1663982774
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+50 samples (0 females, 0 males, 50 ambiguous; 50 founders) loaded from
+convert_2_pgen.psam.
+17 variants loaded from convert_2_pgen.pvar.
+Note: No phenotype data present.
+--extract: 7 variants remaining.
+Calculating allele frequencies... done.
+7 variants remaining after main filters.
+Constructing GRM: done.
+Extracting eigenvalues and eigenvectors... done.
+--pca: Eigenvectors written to common_PCA.eigenvec , and eigenvalues written to
+common_PCA.eigenval .
+
+End time: Fri Sep 23 18:26:14 2022

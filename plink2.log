@@ -1,0 +1,20 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --glm
+  --pfile convert_2_pgen
+  --pheno po
+  --read-freq convert_2_pgen.snps.freq.afreq
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Tue Aug 30 11:36:27 2022
+
+Random number seed: 1661884587
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+20 samples (0 females, 0 males, 20 ambiguous; 20 founders) loaded from
+convert_2_pgen.psam.
+19 variants loaded from convert_2_pgen.pvar.
+Error: Failed to open po : No such file or directory.
+
+End time: Tue Aug 30 11:36:27 2022

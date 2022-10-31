@@ -5,7 +5,8 @@
 # https://stackoverflow.com/questions/3452086/getting-path-of-an-r-script/35842176#35842176
 
 common_pca <- read.table("common_PCA.eigenvec")
-print(common_pca)
+#just printing the beginning of the data so you can see it:
+print(head(common_pca))
 
 # https://www.biostars.org/p/487372/
 
@@ -15,7 +16,7 @@ library(dplyr)
 # popA <- (common_pca[2:52,])
 # popB <- (common_pca[53:101,])
 # new_col = (popA$popB)
-# new_col
+# new_colp
 
 
 # df$deme_id <- ifelse(df[2:52,] = 1, df[52:102] =2)
@@ -27,13 +28,12 @@ library(dplyr)
 common_pca$row_number <- 1:nrow(common_pca)
 
 #common_pca
-common_pca$deme_id <- ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2) # galen's suggestion. This script is hardcoded to the numbers hardcoded into the yaml files, so just splits the individuals into two demes by that number. Make sure you don't confuse these numbers with your sample numbers. 
-common_pca
+common_pca$deme_id <- ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2) # galen's suggestion. This script is hardcoded to the numbers hardcoded into the yaml files, so just splits the individuals into two demes by that number so you can plot by deme id. Make sure you don't confuse these numbers with your sample numbers. 
+head(common_pca)
 
-
-new_df <- data.frame(matrix(ncol = 1, nrow = 1000))
-new_df$deme_id <- new_df %>% mutate(ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2)) # galen's suggestion
-new_df
+# new_df <- data.frame(matrix(ncol = 1, nrow = 1000))
+# new_df$deme_id <- new_df %>% mutate(ifelse(common_pca$row_number >= 0 & common_pca$row_number <= 500, 1, 2)) # galen's suggestion
+# head(new_df)
 #new_df
 # if (common_pca$row_number <= 50){common_pca$deme_id = 1}
 # else {common_pca$deme_id = 2}
@@ -56,14 +56,14 @@ ggsave("common_PCA_plot.jpg", plot = plot)
 
 rare_pca <- read.table("rare_PCA.eigenvec")
 rare_pca$row_number <- 1:nrow(rare_pca)
-rare_pca
+head(rare_pca)
 rare_pca$deme_id <- ifelse(rare_pca$row_number >= 0 & rare_pca$row_number <= 500, 1, 2) # galen's suggestion
-rare_pca
+head(rare_pca)
 
 
-new_df_2 <- data.frame(matrix(ncol = 1, nrow = 1000))
-new_df_2$deme_id <- new_df_2 %>% mutate(ifelse(rare_pca$row_number >= 0 & rare_pca$row_number <= 500, 1, 2)) # galen's suggestion
-new_df_2
+# new_df_2 <- data.frame(matrix(ncol = 1, nrow = 1000))
+# new_df_2$deme_id <- new_df_2 %>% mutate(ifelse(rare_pca$row_number >= 0 & rare_pca$row_number <= 500, 1, 2)) # galen's suggestion
+# head(new_df_2)
 
 library(ggplot2)
 plot2 <- ggplot(rare_pca, aes(x = V3, y = V4, color = deme_id)) +

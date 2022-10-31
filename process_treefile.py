@@ -118,15 +118,7 @@ class phenotypes:
 
 
         phenotypes_array = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
-        print("empty phenotypes array",phenotypes_array)
-        # for tree in ts.trees():
-        #     for individual in tree.individuals():
-        #         print(metadata)
-
-        # print("table", ts.tables.individuals)
-        # print(ts.tables.individuals.metadata)
-        # for i in ts.tables.individuals:
-        #     print(i.metadata)
+        # print("empty phenotypes array",phenotypes_array)
         environmental_effects = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos) 
 
         for index, i in enumerate(ts.tables.individuals):
@@ -172,7 +164,7 @@ def get_phenotypes():
 
 
 
-def make_popfile(phenotypes_array): #not sure why this works, I would've thought I would have to call self.full_phenotypes here???
+def make_popfile(full_phenotypes,environmental_effects): #not sure why this works, I would've thought I would have to call self.full_phenotypes here???
     deme_id=[[i]*deme_size for i in range(0,populations_at_end)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
     #flatten
     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
@@ -181,8 +173,10 @@ def make_popfile(phenotypes_array): #not sure why this works, I would've thought
     
     # phenotypes_array = phenotypes_array
     txt_name = "pop.txt"
-    full_pheno_1, full_pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-    popdf = np.transpose([fid, iid, deme_id, full_pheno_1, full_pheno_2]) 
+    full_pheno_1, full_pheno_2 = full_phenotypes.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
+    environmental_effect_1, environmental_effect_2 = environmental_effects.T
+
+    popdf = np.transpose([fid, iid, deme_id, full_pheno_1, full_pheno_2, environmental_effect_1, environmental_effect_2]) 
     # print(popdf)
 
     
@@ -190,7 +184,7 @@ def make_popfile(phenotypes_array): #not sure why this works, I would've thought
 
 
     with open(txt_name, 'wb') as f:
-        f.write(b'FID\tIID\tdeme_id\tfull_phenotype1\tfull_phenotype2\n') 
+        f.write(b'FID\tIID\tdeme_id\tfull_phenotype1\tfull_phenotype2\tenvironmental_effect1\tenvironmental_effect2\n') 
         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
 
 
@@ -200,7 +194,7 @@ def make_popfile(phenotypes_array): #not sure why this works, I would've thought
 
 
 
-print(ts.num_samples)
+print("ts.num_samples:",ts.num_samples)
 
 
 print("making vcf for the sim") 
@@ -215,7 +209,7 @@ make_vcf(vcf_path, indv_names)
 
 print("making .txt file that contains individuals and phenotypes")
 #find how many demes are present at the end of the sim
-print(type(ts.tables.nodes))
+# print(type(ts.tables.nodes))
 populations = ts.tables.nodes.population
 times = ts.tables.nodes.time
 array = np.column_stack((populations, times))
@@ -224,7 +218,7 @@ populations_at_end = len(set(present_nodes[:,0])) #length of the SET of the popu
 
 #make a list of individuals in each deme. The demes must be equal in size for this to work
 individuals_at_end = len(present_nodes)
-print(individuals_at_end)
+print("individuals_at_end:",individuals_at_end)
 deme_size = int(individuals_at_end / (2*populations_at_end)) #divide by 2 because nodes represent haploid genomes in diploid organisms. 
 
 
@@ -237,7 +231,7 @@ constructor = get_phenotypes() #will have to rewrite this if you're returning mu
 # phenotypes_array = reconstruct_phenotypes() #obsolete????
 
 print("simulating phenotypes from environmental and genetic effects")
-make_popfile(constructor.full_phenotypes)
+make_popfile(constructor.full_phenotypes, constructor.environmental_effects)
 
 # print(ts.tables.individuals.metadata)#these will print as the non-decoded versions
 # print(ts.tables.mutations.metadata)

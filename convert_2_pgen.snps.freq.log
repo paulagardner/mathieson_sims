@@ -1,0 +1,24 @@
+PLINK v2.00a2.3LM 64-bit Intel (24 Jan 2020)
+Options in effect:
+  --extract convert_2_pgen.snps.snplist
+  --freq
+  --out convert_2_pgen.snps.freq
+  --pfile convert_2_pgen
+
+Hostname: pop-os
+Working directory: /home/pdgardne/mathieson_sims
+Start time: Thu Oct 27 16:24:38 2022
+
+Random number seed: 1666913078
+32048 MiB RAM detected; reserving 16024 MiB for main workspace.
+Using up to 12 threads (change this with --threads).
+50 samples (0 females, 0 males, 50 ambiguous; 50 founders) loaded from
+convert_2_pgen.psam.
+25 variants loaded from convert_2_pgen.pvar.
+Note: No phenotype data present.
+--extract: 25 variants remaining.
+Calculating allele frequencies... done.
+--freq: Allele frequencies (founders only) written to
+convert_2_pgen.snps.freq.afreq .
+
+End time: Thu Oct 27 16:24:38 2022
