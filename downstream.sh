@@ -22,8 +22,9 @@ plink2 --vcf genos.vcf --double-id --make-pgen --out convert_2_pgen
 
 
 #START skipping this for just running a GWAS without anything filtered. However, filtering by rare and common variants means you can do different PCAs with them. 
+
 #just copying their filter rare variants step
-plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen_test --write-snplist
+# plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen_test --write-snplist
 plink2 --mac 2 --max-mac 4 --out rare_variants_filter --pfile convert_2_pgen --write-snplist allow-dups
 
 #filter common variants
@@ -41,6 +42,8 @@ plink2 --pfile convert_2_pgen --extract rare_variants_filter.snplist --pca --out
 # plink2 --pfile convert_2_pgen --extract convert_2_pgen.snps.snplist --pca --out overall_PCA
 
 ###########END skip
+
+
 
 
 #their step again: calculate allele frequencies:
@@ -80,8 +83,22 @@ plink2 --pfile convert_2_pgen --extract convert_2_pgen.snps.snplist --freq --out
 
 
 
+#uncorrected
+plink2 --glm  --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  --pheno pop.txt --out gwas  #mathieson et al has --hide-covar, if you remove it
 
-plink2 --glm --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  --pheno pop.txt --out gwas  #mathieson et al has --hide-covar, if you remove it
+
+
+
+
+#common variants
+plink2 --glm   --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  --pheno pop.txt --covar common_PCA.eigenvec  --out gwas_common_correction
+#the output file from this gets pretty tricky
+
+#rare variants
+plink2 --glm  --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  --pheno pop.txt --covar rare_PCA.eigenvec  --out gwas_rare_correction
+
+
+
 #you could include a covariates file if you'd like-- may try to do that to have the deme id as a covariate. The mathieson paper does not do this, but they do include correction w/ eigenvectors file. (you can get that from doing PCAs)
 #tried using --covar pop.txt, and it loads "3 covariates" which I'm assuming end up being deme_id, phenotype1 and phenotype2. I want deme_id to be a covariate, but probably not the phenotypes?
 
@@ -98,7 +115,7 @@ plink2 --glm --pfile convert_2_pgen --read-freq convert_2_pgen.snps.freq.afreq  
 # plink2 --score genos.vcf list-variants header --pfile convert_2_pgen --pheno pop.txt --out testing --score-col-nums 3-12
 
 #how to get PGS from your GLM: you specify the gwas you want to get PGS for, and three columns: variant ID, allele code (kevin suggested I use the minor allele), and the column that actually contains the numbers to score from. For this, it'll be the betas.   
-plink2 --score gwas.phenotype1.glm.linear 3 5 9 --pfile convert_2_pgen --pheno pop.txt --out PGS
+# plink2 --score gwas.phenotype1.glm.linear 3 5 9 --pfile convert_2_pgen --pheno pop.txt --out PGS
 
 #make effect size vs. p-value plots
 #phenotype 1: 

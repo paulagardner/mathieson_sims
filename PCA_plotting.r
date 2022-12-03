@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 #chmod +x script.r
 
+
 #setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 # https://stackoverflow.com/questions/3452086/getting-path-of-an-r-script/35842176#35842176
 

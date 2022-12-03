@@ -13,25 +13,28 @@ from numpy.random import default_rng
 import tskit
 from itertools import groupby
 import json
-import demesdraw
-import matplotlib as plt
+import demesdraw 
+import matplotlib.pyplot as plt #if it's just matplotlib, your demesdraw subplots part won't work
+import seaborn as sns
 from dataclasses import dataclass
 
 demography = msprime.Demography()
-graph = demes.load("no_ancestry.yaml")
+graph = demes.load("pop_split.yaml")
+# graph = demes.load("no_ancestry.yaml")
+graph2 = demes.load("no_ancestry.yaml")
 
-mu = ((1e-7)*5)
+mu = ((1e-7)*2)
 rho = 1e-7
-bases = 1000
+bases = 100000
 
-deme_size = 25
+deme_size = 250 #scaling this to 1,000 is fairly trivial
 def simulate(mu, rho, graph):
     ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
 
 
     mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, ) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
-    #random_seed = 1234
+    #random_seed = 1234--- how do I include the seed?
     return mts
 
 
@@ -101,11 +104,41 @@ class phenotype_constructor:
         rng = default_rng()
 
 
+
+
         #make the variance-covariance matrix of phenotypic effects: 
-        var_covar = np.identity(phenos) #this is essentially no pleitropy- no covariance b/w the two phenotypes means they are independent
-        var_covar = np.array([1, 0, 0, 1]).reshape(2,2) #here, I've redefined the variable but it's still an identity matrix. BUT this is how you might make a NON-zero covariance matrix
-        #double check how the above relates to the phenotypes- do the non-diagonal elements behave as you're expecting?dR
-        #make the means matrix for the multivariate generator
+        # var_covar = np.identity(phenos) #this is essentially no pleitropy- no covariance b/w the two phenotypes means they are independent
+        # var_covar = np.array([1, 0, 0, 1]).reshape(2,2) #here, I've redefined the variable but it's still an identity matrix. BUT this is how you might make a NON-zero covariance matrix
+        # #double check how the above relates to the phenotypes- do the non-diagonal elements behave as you're expecting?dR
+        # #make the means matrix for the multivariate generator
+
+        # #no correlation b/w pleiotropic effects
+        # correlation_matrix = np.array([1, 0, 0, 1]).reshape(2,2)  #var-covar = 0.8, 0, 0, 0.8
+        # #after the fwdpy11 vignette: you need to convert this correlation matrix into a covariance matrix. To do that, you'll need a vector of standard deviations
+        # sd = np.array([0.894427191, 0.894427191]) #the variances in the var-covar matrix come from this vector. since variance is sd^2, you must take the square root of your desired heritability to put in here
+
+        #1/2 correlation:
+        correlation_matrix = np.array([1, 0.5, 0.5, 1]).reshape(2,2) #var-covar = 0.8, 0.4, 0.4, 0.8
+        sd = np.array([0.894427191, 0.894427191])
+
+       # 1:1 correlation
+        # correlation_matrix = np.array([1, 1, 1, 1]).reshape(2,2) #var-covar = 0.8, 0.8, 0.8, 0.8
+        # sd = np.array([0.894427191, 0.894427191])
+
+
+
+
+
+
+
+        D = np.identity(2) #argument is however many phenotypes there are 
+        np.fill_diagonal(D, sd)
+        var_covar = np.matmul(np.matmul(D, correlation_matrix), D)
+        print("variance-covariance matrix", var_covar)
+        
+
+
+
         means = np.zeros(phenos)    
 
         #create multivariate effects. to do so, you must have mean effect sizes, the covariance matrix (from above). Since it's a matrix of effects, the matrix size must be specified also. 
@@ -200,6 +233,7 @@ class phenotype_constructor:
 
         # print("summed phenotypes:", "\n", phenotypes_array)
         # return phenotypes_array, muteffects
+        self.genetic = genetic_effects_array
         self.environmental = env_generator
         self.phenotypes = summed_phenotypes
         self.muts = muteffects #make sure these are outside of the for() loop!
@@ -214,7 +248,6 @@ def make_phenotypes():
 #     deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
 #     #flatten
 #     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
-
 
 #     # phenotypes_array = constructor.phenotypes
 #     txt_name = "pop.txt"
@@ -241,6 +274,7 @@ def add_metadata_to_treefile():
     class IndividualMetadata:
         full_phenotypes: list
         environmental_effects: list
+        genetic_effects: list
         # env_effects: list   #might have to do some work to get  
 
 
@@ -261,6 +295,7 @@ def add_metadata_to_treefile():
             if isinstance(obj, IndividualMetadata):
                 return obj.__dict__
             return json.JSONEncoder.default(self, obj)
+
 
     #make a new table collection to hold everything
     # newtables = tskit.TableCollection(1.0) 
@@ -289,9 +324,11 @@ def add_metadata_to_treefile():
             "type": "object",
             "name": "Individual metadata",
             # See tskit docs for what proprties are allowed
-            "properties": {"full_phenotypes": {"type": "array"}, "environmental_effects":{"type":"array"}},
+            "properties": {"full_phenotypes": {"type": "array"}, "environmental_effects":{"type":"array"}, "genetic_effects":{"type":"array"}},
         }
     )
+
+    
     
 # "environmental_effects": {"type":"array"}
 
@@ -359,11 +396,12 @@ def add_metadata_to_treefile():
 
     ###################################################################set it up for environmental effects 
     phenotypes = constructor.phenotypes.tolist()
+    genetic_effects = constructor.genetic.tolist()
     environmental_effects = constructor.environmental.tolist()
 
 
-    print(phenotypes)
-    # print("get environmental effects from constructor function", environmental_effects)
+    #print(phenotypes)
+    #print("get environmental effects from constructor function", environmental_effects)
     metadata_column = []
     # print(muts)
     # for index, phenotype in enumerate(phenotypes):
@@ -377,7 +415,7 @@ def add_metadata_to_treefile():
 
 
     for index, phenotype in enumerate(phenotypes):
-        md = IndividualMetadata(phenotype,environmental_effects[index])#this almost works, but what it appends is the correct phenotype, then ALL environmental effects for all individuals.
+        md = IndividualMetadata(phenotype,environmental_effects[index], genetic_effects[index])#this almost works, but what it appends is the correct phenotype, then ALL environmental effects for all individuals.
         md_as_json = bytes(json.dumps(md, cls=IndividualMetadataEncoder), "utf-8")
         metadata_column.append(md_as_json)
 
@@ -457,8 +495,24 @@ def add_metadata_to_treefile():
     # return covar_df
 
 #check that the YAML is doing what you'd expect:
-ax = demesdraw.tubes(graph)
+ax = demesdraw.tubes(graph2)
+ax.title.set_text('no ancestry')
 ax.figure.savefig("A.svg")
+
+#attempt to plot them side-by side
+# fig, (ax1, ax2) = plt.subplots(1,2)
+# ax1 = demesdraw.tubes(graph)
+# ax2 = demesdraw.tubes(graph2)
+# plt.savefig("A.svg")
+
+# fig = plt.figure()
+# ax1 = demesdraw.tubes(graph)
+# ax2 = demesdraw.tubes(graph2)
+
+# fig = plt.figure()
+# ax1 = fig.add_subplot(demesdraw.tubes(graph))
+# plt.savefig("A.svg")
+
 
 
 
@@ -485,7 +539,7 @@ print("simulating phenotypes from environmental and genetic effects")
 
 
 constructor = make_phenotypes()
-# print("summed phenotypes", constructor.phenotypes)
+print("summed phenotypes", constructor.phenotypes)
 
 # print("mutation effect sizes",  constructor.muts)
 
@@ -495,3 +549,4 @@ constructor = make_phenotypes()
 
 print("dumping treefile WITH METADATA")
 add_metadata_to_treefile()
+
