@@ -48,7 +48,7 @@ def mutation_placer():
         list = []
         for node in tree.nodes(): #type error: tree object is not iterable-- this happens w/ you frequently b/c you're forgetting to include the parenthesis to call the method properly, so the code tries to iterate over the method and not the data structure it's referencing 
             list.append(node)
-            tskit.Tree.branch_length(self, node)
+            tskit.Tree.branch_length(node)
         print(list)
 
 
