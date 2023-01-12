@@ -23,19 +23,33 @@ graph = demes.load("pop_split.yaml")
 # graph = demes.load("no_ancestry.yaml")
 graph2 = demes.load("no_ancestry.yaml")
 
-mu = ((1e-7)*2)
+mu = ((1e-7)*20) #normally would have this set to 1e-7 *2, but putting deme size down and #individuals up to be able to visualize tree sequences for working on placing mutations issue 
 rho = 1e-7
-bases = 100000
+bases = 1000
 
-deme_size = 250 #scaling this to 1,000 is fairly trivial
+deme_size = 5 #scaling this to 1000 doesn't affect much 
 def simulate(mu, rho, graph):
     ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
 
+    
+
+    
 
     mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, ) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
     #random_seed = 1234--- how do I include the seed?
-    return mts
+    return mts 
+    
+    
+
+
+def mutation_placer():
+    for tree in ts.trees():
+        list = []
+        for node in tree.nodes(): #type error: tree object is not iterable-- this happens w/ you frequently b/c you're forgetting to include the parenthesis to call the method properly, so the code tries to iterate over the method and not the data structure it's referencing 
+            list.append(node)
+            tskit.Tree.branch_length(self, node)
+        print(list)
 
 
 #make a vcf that will have each row signifying a mutation. (thus it's keeping track of the same info as make_phenotypes does: accounting for which individuals have which mutations, and how many copies)
@@ -60,7 +74,7 @@ def make_vcf(vcf_path, indv_names):
     
     header =''.join(header)
 
-    print(header)
+    # print(header)
 
     #make an id for all mutations
     id  = ["rs" + str(i) for i in range(len(ts.tables.mutations))] #calling it rs _ because i see it that way on other VCF
@@ -77,6 +91,20 @@ def make_vcf(vcf_path, indv_names):
         vcf.write(header)#use this instead of df.to_csv because that will sometimes mess up your column headers
     df.to_csv(vcf_path, sep="\t", mode='a', index=False)#if this is indented in with_open() sometimes mess up your column headers
 
+
+
+    
+
+
+        # for ts.nodes in tree:
+        #     print(nodes)
+    # for tree in ts.trees():
+    #     print(ts.nodes)
+        # print(tree.nodes)
+        # nodes = nodes.id
+        # # for node in tree:
+        # #     print(node)
+        # print(nodes)
 
 
 
@@ -139,7 +167,9 @@ class phenotype_constructor:
 
 
 
-        means = np.zeros(phenos)    
+        means = np.zeros(phenos) 
+        environmental_means = np.zeros(phenos) #assign mean environmental effect with argparser 
+           
 
         #create multivariate effects. to do so, you must have mean effect sizes, the covariance matrix (from above). Since it's a matrix of effects, the matrix size must be specified also. 
         muteffects = rng.multivariate_normal(mean = means, cov = var_covar, size = (len(mut_index)))
@@ -217,7 +247,7 @@ class phenotype_constructor:
         environmental_effects = np.zeros(n_dip_indv*phenos).reshape(n_dip_indv,phenos)
         # env_generator = random.normal(mean=0, seed =1234)
         
-        env_generator = rng.normal(loc=means, scale=1, size = (n_dip_indv,phenos)) #scale is the standard deviation
+        env_generator = rng.normal(loc=environmental_means, scale=1, size = (n_dip_indv,phenos)) #scale is the standard deviation
         # print("environmental effects:",env_generator)
         # print("genetic effects:", genetic_effects_array)
         
@@ -237,7 +267,10 @@ class phenotype_constructor:
         self.environmental = env_generator
         self.phenotypes = summed_phenotypes
         self.muts = muteffects #make sure these are outside of the for() loop!
+        self.environmental_means = environmental_means
         # print("PHENOTYPES",phenotypes_array) 
+
+
 
 def make_phenotypes():
     return phenotype_constructor()
@@ -330,7 +363,7 @@ def add_metadata_to_treefile():
 
     
     
-# "environmental_effects": {"type":"array"}
+    # "environmental_effects": {"type":"array"}
 
 
     # Add schema to table
@@ -339,7 +372,7 @@ def add_metadata_to_treefile():
 
 
 
-###################################################making mutataions into a format that works
+    ###################################################making mutataions into a format that works
     muts = constructor.muts.tolist() #taking just the muts from the constructor class
     metadata_column = []
     # print(muts)
@@ -395,6 +428,7 @@ def add_metadata_to_treefile():
 
 
     ###################################################################set it up for environmental effects 
+    
     phenotypes = constructor.phenotypes.tolist()
     genetic_effects = constructor.genetic.tolist()
     environmental_effects = constructor.environmental.tolist()
@@ -437,62 +471,34 @@ def add_metadata_to_treefile():
         metadata=md,
         metadata_offset=md_offset)
 
-        
 
 
 
-    #     site=ts.tables.individuals.site,
-    #     derived_state=ts.tables.individuals.derived_state,
-    #     derived_state_offset=ts.tables.individuals.derived_state_offset,
-    #     node=ts.tables.individuals.node,  # This is the last required one
-    #     time= ts.tables.individuals.time,
-    #     metadata=md,
-    #     metadata_offset=md_offset,
-    # ) #rebuild using original tables for most arguments
+    # print(newtables)
 
-
-
-    # # Efficiently rebuild the mutation table in-place (method 1)
-    # newtables.mutations.set_columns(
-    #     site=ts.tables.mutations.site,
-    #     derived_state=ts.tables.mutations.derived_state,
-    #     derived_state_offset=ts.tables.mutations.derived_state_offset,
-    #     node=ts.tables.mutations.node,  # This is the last required one
-    #     time= ts.tables.mutations.time,
-    #     metadata=md,
-    #     metadata_offset=md_offset,
-    # ) #rebuild using original tables for most arguments
-
-    # phenotypes = constructor.phenotypes.tolist()
-
-
-
-
-
-    print(newtables)
-
+    # print(newtables)
     # print(newtables)
     newtables.dump("output.trees")
 
 
 
 
-# def make_covar(): #an attempt to streamline the GWAS process
-    # deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
-    # #flatten
-    # deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
+    # def make_covar(): #an attempt to streamline the GWAS process
+        # deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
+        # #flatten
+        # deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
 
-    # phenotypes_array = make_phenotypes()[0] #why the indexing? If you return multiple values from the function (such as make_phenotypes), gotta specify which variable you want to access
-    # txt_name = "covar.txt"
+        # phenotypes_array = make_phenotypes()[0] #why the indexing? If you return multiple values from the function (such as make_phenotypes), gotta specify which variable you want to access
+        # txt_name = "covar.txt"
+        
     
-  
-    # print(deme_id)
-    # covar_df = np.column_stack((fid, iid, deme_id))
-    # with open(txt_name, 'wb') as f:
-    #     f.write(b'FID\tIID\tdeme_id')
-    #     np.savetxt(f, covar_df, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
+        # print(deme_id)
+        # covar_df = np.column_stack((fid, iid, deme_id))
+        # with open(txt_name, 'wb') as f:
+        #     f.write(b'FID\tIID\tdeme_id')
+        #     np.savetxt(f, covar_df, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
 
-    # return covar_df
+        # return covar_df
 
 #check that the YAML is doing what you'd expect:
 ax = demesdraw.tubes(graph2)
@@ -517,12 +523,13 @@ ax.figure.savefig("A.svg")
 
 
 print("simulating genotypes under demographic model")
-ts = simulate(mu, rho, graph)
+ts = simulate(mu, rho, graph) #NOTE: not the ts WITHIN def(simulate), or mts. new variable for the tree sequence containing mutations. The function returns mts, which you've renamed back to ts for simplicity (it's the tree sequence to be used in the rest of the file)
 # print(ts.tables)
 
 print("writing treefile for downstream analysis")
 ts.dump("output.trees")
 
+mutation_placer()
 
 # print("making vcf for the sim") #hopefully not necessary 
 # vcf_path = "genos.vcf"
@@ -539,7 +546,8 @@ print("simulating phenotypes from environmental and genetic effects")
 
 
 constructor = make_phenotypes()
-print("summed phenotypes", constructor.phenotypes)
+# print("summed phenotypes", constructor.phenotypes)
+print("environmental means:", constructor.environmental_means)
 
 # print("mutation effect sizes",  constructor.muts)
 
@@ -547,6 +555,12 @@ print("summed phenotypes", constructor.phenotypes)
 # print("making .txt file that contains individuals and phenotypes")
 # make_popfile(constructor.phenotypes)
 
-print("dumping treefile WITH METADATA")
+print("dumping treefile with metadata")
 add_metadata_to_treefile()
+
+
+
+ts.draw_svg("treesequence_visualization.svg")
+
+
 
