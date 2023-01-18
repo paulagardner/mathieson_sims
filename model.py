@@ -31,25 +31,81 @@ deme_size = 5 #scaling this to 1000 doesn't affect much
 def simulate(mu, rho, graph):
     ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
+    return ts
 
     
 
     
 
-    mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, ) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
-    #random_seed = 1234--- how do I include the seed?
-    return mts 
+    # mts = msprime.sim_mutations(ts, rate = mu, discrete_genome = False, ) #discrete_genome = false gives infinite sites, basically, so simplifies downstream bc you don't have to account for mult mutations at a site
+    # #random_seed = 1234--- how do I include the seed?
+    # return mts 
     
     
 
 
 def mutation_placer():
     for tree in ts.trees():
-        list = []
+        branch_lengths = np.zeros(tree.tree_sequence.num_nodes)
+        # print(len(branch_lengths))
+        dict = {}
+        nodes_list = np.zeros(tree.tree_sequence.num_nodes)
         for node in tree.nodes(): #type error: tree object is not iterable-- this happens w/ you frequently b/c you're forgetting to include the parenthesis to call the method properly, so the code tries to iterate over the method and not the data structure it's referencing 
-            list.append(node)
-            tskit.Tree.branch_length(node)
-        print(list)
+            
+            #add 
+            dict[node] = tree.branch_length(node) #https://stackoverflow.com/questions/43505921/python-trying-to-create-a-dictionary-through-a-for-loop
+            
+            branch_lengths[node] =+ tree.branch_length(node) 
+            nodes_list[node] =+ node
+            #kevin's suggestion of how to do it- note that you've largely figured it out already in the line above 
+        
+            
+            #get branch lengths as a proportion of total
+            proportional_branch_lengths = branch_lengths/tree.total_branch_length
+
+        # print("nodes list length", len(nodes_list))
+        # print("branches length", len(branch_lengths))
+        # print("branch lengths",(branch_lengths))
+        # print("nodes list", (nodes_list))
+        # print("dictionary for a single tree (one per loop) with node id and branch length above it:", dict)
+
+        #randomly sample nodes according to the branch lengths above them 
+                #to do that, I'll need to have k (the number of draws numpy.choice/choices is making) specified by a probability distribution that takes in mutation rate
+
+        #mu is from above
+        print("size of distribution", mu*bases)
+        #conceptually: the probability of a mutation happening, look at coalescent theory book
+
+
+        nodes_sampled =  np.random.choice(nodes_list, p=proportional_branch_lengths, size = 3) #this can sample the same node twice, which IS what you want. You just want to make sure when you're finishing the function here, that 
+        print("nodes sampled from distribution", nodes_sampled)
+        mut_table = ts.tables.mutations
+        node_table = ts.tables.nodes
+        for node in nodes_sampled:
+            #draw a site from the genome that HASN'T ALREADY had a mutation assigned to it. (can probably skip making the sites infinite for now)
+            #use these nodes to write mutations to the mutations table
+            # print(ts.tables.mutations)
+
+            #conceptually: a way to add rows
+            #mut_table.add_row(site=(randomly select a site from the span of this tree's 'genome without replacement), node=node, derived_state=(randomly select what the derived state is), parent=NULL, metadata=None, time=(select a time interval on the branch length)) 
+            # site = #randomly sample between left and right edges 
+            print(node)
+
+
+
+
+         
+        #write that to the mutations table to actually have the mutations
+        
+        # print("normalized branch lengths", proportional_branch_lengths)
+        
+        # print(branch_lengths)
+
+
+    # for t in ts.trees():
+    #     print(t)
+    #     print(type(t))
+    #     # t.branch_length(x) 
 
 
 #make a vcf that will have each row signifying a mutation. (thus it's keeping track of the same info as make_phenotypes does: accounting for which individuals have which mutations, and how many copies)
