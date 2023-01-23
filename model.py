@@ -27,6 +27,7 @@ mu = ((1e-7)*20) #normally would have this set to 1e-7 *2, but putting deme size
 rho = 1e-7
 bases = 1000
 
+
 deme_size = 5 #scaling this to 1000 doesn't affect much 
 def simulate(mu, rho, graph):
     ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
@@ -45,6 +46,12 @@ def simulate(mu, rho, graph):
 
 
 def mutation_placer():
+    newtables = ts.dump_tables() #modifying a copy of the original tables in order to be able to overwrite 
+    #make a new table collection to hold everything
+    edge_table = newtables.edges
+    mut_table = newtables.mutations
+    node_table = newtables.nodes
+    site_table = newtables.sites
     for tree in ts.trees():
         branch_lengths = np.zeros(tree.tree_sequence.num_nodes)
         # print(len(branch_lengths))
@@ -78,18 +85,65 @@ def mutation_placer():
 
 
         nodes_sampled =  np.random.choice(nodes_list, p=proportional_branch_lengths, size = 3) #this can sample the same node twice, which IS what you want. You just want to make sure when you're finishing the function here, that 
-        print("nodes sampled from distribution", nodes_sampled)
-        mut_table = ts.tables.mutations
-        node_table = ts.tables.nodes
+        
+        nodes_sampled = nodes_sampled.astype(int) ##these need to be integers to be able to use them to access indices/values in the edge table. See if you can make it such when the  variable is created 
+        # print("nodes sampled from distribution", nodes_sampled)
+
+        #pick out the spot in the genome that the tree we have iterated over actually occupies (with edges) 
         for node in nodes_sampled:
             #draw a site from the genome that HASN'T ALREADY had a mutation assigned to it. (can probably skip making the sites infinite for now)
             #use these nodes to write mutations to the mutations table
             # print(ts.tables.mutations)
+            
+            #get the entries from the edges tables that correspond to the nodes you've chosen 
+
+            # print("node ID", node,  ts.tables.edges.child[node])#https://stackoverflow.com/questions/176918/finding-the-index-of-an-item-in-a-
+            
+            for index, j in enumerate(ts.tables.edges.child): #I think the child node is the appropriate one to pick, since we chose nodes BELOW branches. Mutations are associated with the node below them (according to tskit data model page)
+                # print(index, j) #this print statement coupled with the one below lets you check if it's behaving as intended
+                if j == node:
+                    print("node", node, "index of the node we're calling from the child column", index)
+                    print("node", node, "edges associated with the node", edge_table[index])
+
+            #each child node may appear more than once in the table, so you may have to just randomly pick between the two, and then report the span of the edges from them to put into the mutation table 
+
+
+            
+            site =np.random.choice(np.setdiff1d(range(0, bases), site_table.position)) #resource for what I'm wanting to do to simulate infinite sites: sample bases without replacement, but ACROSS loops (bases has a replacement parameter, that only works within calls of the function) #https://stackoverflow.com/questions/44507803/in-numpy-how-can-i-randomly-choose-a-number-from-a-range-that-excludes-a-random #need to test to see if it's working properly. range(1, bases is so you're actually getting values up to the integer value you've set as bases (print bases above to check))
+            # print("node:", node, "site chosen from bases:", site)
+            #add the site to the sites table
+            nucleotides = ["A", "T", "C", "G"]
+            site_table.add_row(position=site, ancestral_state = np.random.choice(nucleotides))
+
+
+
+            mut_table.add_row(site=site, node=node, derived_state = np.random.choice(np.setdiff1d(nucleotides, site_table.ancestral_state))) #this doesn't work as with the above-- perhaps something with the strings. 
+            # print(tskit.unpack_strings(site_table.ancestral_state, site_table.ancestral_state_offset))
+
+            # print(np.setdiff1d(nucleotides, site_table.ancestral_state))
+
+  
+
+        print(ts.tables.edges)
+
+        # print(mut_table)
+        # print(site_table)
+    # print(site_table)
+    # print(mut_table)
+    # print(newtables)
+    return(newtables)
+                
+            #check where that site should go in terms of edges (eg which tree it'll end up falling on)
+
+
+           
 
             #conceptually: a way to add rows
             #mut_table.add_row(site=(randomly select a site from the span of this tree's 'genome without replacement), node=node, derived_state=(randomly select what the derived state is), parent=NULL, metadata=None, time=(select a time interval on the branch length)) 
             # site = #randomly sample between left and right edges 
-            print(node)
+
+            #may also need to figure out (from theory) if branch lengths should be affecting mutation effect sizes 
+            
 
 
 
@@ -109,43 +163,43 @@ def mutation_placer():
 
 
 #make a vcf that will have each row signifying a mutation. (thus it's keeping track of the same info as make_phenotypes does: accounting for which individuals have which mutations, and how many copies)
-def make_vcf(vcf_path, indv_names):
-    with open(vcf_path, "w") as vcf_file:  
-        ts.write_vcf(vcf_file, individual_names=indv_names) 
+# def make_vcf(vcf_path, indv_names):
+#     with open(vcf_path, "w") as vcf_file:  
+#         ts.write_vcf(vcf_file, individual_names=indv_names) 
 
-    #isolate each part of the vcf so you can collect all the elements and write a vcf from it, with ID fields
-    #get column headers
-    with open(vcf_path, 'r') as f:
-        lines = [l for l in f if not l.startswith('##')] 
+#     #isolate each part of the vcf so you can collect all the elements and write a vcf from it, with ID fields
+#     #get column headers
+#     with open(vcf_path, 'r') as f:
+#         lines = [l for l in f if not l.startswith('##')] 
         
-        df = pd.read_csv(io.StringIO(''.join(lines)),
-        dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
-            'QUAL': str, 'FILTER': str, 'INFO': str},
-            sep='\t')#.rename(columns={'#CHROM': 'CHROM'}) #do not want to rename this! Plink2 is very unhappy if you take the # away. 
+#         df = pd.read_csv(io.StringIO(''.join(lines)),
+#         dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
+#             'QUAL': str, 'FILTER': str, 'INFO': str},
+#             sep='\t')#.rename(columns={'#CHROM': 'CHROM'}) #do not want to rename this! Plink2 is very unhappy if you take the # away. 
     
     
-    #isolate header info rows
-    with open(vcf_path, 'r') as vcf_file:
-        header = [l for l in vcf_file if l.startswith('##')]
+#     #isolate header info rows
+#     with open(vcf_path, 'r') as vcf_file:
+#         header = [l for l in vcf_file if l.startswith('##')]
     
-    header =''.join(header)
+#     header =''.join(header)
 
-    # print(header)
+#     # print(header)
 
-    #make an id for all mutations
-    id  = ["rs" + str(i) for i in range(len(ts.tables.mutations))] #calling it rs _ because i see it that way on other VCF
+#     #make an id for all mutations
+#     id  = ["rs" + str(i) for i in range(len(ts.tables.mutations))] #calling it rs _ because i see it that way on other VCF
 
-    #replace the vcf ID column with new IDs
-    df['ID'] = id
-    # print(df)
+#     #replace the vcf ID column with new IDs
+#     df['ID'] = id
+#     # print(df)
 
-    blankIndex=[''] * len(df)
-    df.index=blankIndex
-    # print(df)
+#     blankIndex=[''] * len(df)
+#     df.index=blankIndex
+#     # print(df)
 
-    with open(vcf_path, 'w') as vcf: #this is almost correct but the headers don't work
-        vcf.write(header)#use this instead of df.to_csv because that will sometimes mess up your column headers
-    df.to_csv(vcf_path, sep="\t", mode='a', index=False)#if this is indented in with_open() sometimes mess up your column headers
+#     with open(vcf_path, 'w') as vcf: #this is almost correct but the headers don't work
+#         vcf.write(header)#use this instead of df.to_csv because that will sometimes mess up your column headers
+#     df.to_csv(vcf_path, sep="\t", mode='a', index=False)#if this is indented in with_open() sometimes mess up your column headers
 
 
 
@@ -352,7 +406,7 @@ def make_phenotypes():
 #     return phenotypes_array
 
 
-def add_metadata_to_treefile():
+def add_metadata_to_treefile(newtables):
     # Define a Python class to represent
     # your metadata.
     @dataclass
@@ -385,10 +439,10 @@ def add_metadata_to_treefile():
                 return obj.__dict__
             return json.JSONEncoder.default(self, obj)
 
+    #original place for this 
+    # #make a new table collection to hold everything
+    # newtables = ts.dump_tables() #modifying a copy of the original tables in order to be able to overwrite 
 
-    #make a new table collection to hold everything
-    # newtables = tskit.TableCollection(1.0) 
-    newtables = ts.dump_tables() #modifying a copy of the original tables in order to be able to overwrite 
 
 
     # tables.nodes.add_row(0, 0)  # flags, time
@@ -585,7 +639,8 @@ ts = simulate(mu, rho, graph) #NOTE: not the ts WITHIN def(simulate), or mts. ne
 print("writing treefile for downstream analysis")
 ts.dump("output.trees")
 
-mutation_placer()
+
+newtables = mutation_placer()
 
 # print("making vcf for the sim") #hopefully not necessary 
 # vcf_path = "genos.vcf"
@@ -612,11 +667,15 @@ print("environmental means:", constructor.environmental_means)
 # make_popfile(constructor.phenotypes)
 
 print("dumping treefile with metadata")
-add_metadata_to_treefile()
+add_metadata_to_treefile(newtables)
 
 
 
 ts.draw_svg("treesequence_visualization.svg")
-
+#view tree sequences in-terminal 
+tskit.TableCollection.sort(edge_start=0, self=newtables, site_start=0, mutation_start=0)
+ts = newtables.tree_sequence()
+for t in ts.trees():
+  print(t.draw(format='unicode'))
 
 
