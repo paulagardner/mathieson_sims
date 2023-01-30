@@ -17,6 +17,7 @@ import demesdraw
 import matplotlib.pyplot as plt #if it's just matplotlib, your demesdraw subplots part won't work
 import seaborn as sns
 from dataclasses import dataclass
+import random
 
 demography = msprime.Demography()
 graph = demes.load("pop_split.yaml")
@@ -70,67 +71,105 @@ def mutation_placer():
             #get branch lengths as a proportion of total
             proportional_branch_lengths = branch_lengths/tree.total_branch_length
 
-        # print("nodes list length", len(nodes_list))
-        # print("branches length", len(branch_lengths))
-        # print("branch lengths",(branch_lengths))
-        # print("nodes list", (nodes_list))
-        # print("dictionary for a single tree (one per loop) with node id and branch length above it:", dict)
 
         #randomly sample nodes according to the branch lengths above them 
-                #to do that, I'll need to have k (the number of draws numpy.choice/choices is making) specified by a probability distribution that takes in mutation rate
-
+        #to do that, I'll need to have k (the number of draws numpy.choice/choices is making) specified by a probability distribution that takes in mutation rate
         #mu is from above
-        print("size of distribution", mu*bases)
+        # print("size of distribution", mu*bases)
         #conceptually: the probability of a mutation happening, look at coalescent theory book
-
-
-        nodes_sampled =  np.random.choice(nodes_list, p=proportional_branch_lengths, size = 3) #this can sample the same node twice, which IS what you want. You just want to make sure when you're finishing the function here, that 
+        nodes_sampled =  np.random.choice(nodes_list, p=proportional_branch_lengths, size = 3) #this can sample the same node twice, which IS what you want. however need to figure out a way to determine which parent node was associated with a given branch length, so you can select a site that makes sense given the edges possible for a child:parent node relationship 
         
         nodes_sampled = nodes_sampled.astype(int) ##these need to be integers to be able to use them to access indices/values in the edge table. See if you can make it such when the  variable is created 
         # print("nodes sampled from distribution", nodes_sampled)
 
         #pick out the spot in the genome that the tree we have iterated over actually occupies (with edges) 
+
+        print("interval this tree occupies", tree.interval)
+        interval = tree.interval #access this to pick which sites are possible
+        # leftint= tree.interval(left)
+        # rightint= tree.interval(right)
+        # print(ts.tables.edges)
+        print(interval)
+        # print("left side of interval", interval.left)
         for node in nodes_sampled:
-            #draw a site from the genome that HASN'T ALREADY had a mutation assigned to it. (can probably skip making the sites infinite for now)
+            ######draw a site from the genome that HASN'T ALREADY had a mutation assigned to it. (can probably skip making the sites infinite for now)
             #use these nodes to write mutations to the mutations table
             # print(ts.tables.mutations)
             
+            # site =np.random.choice(np.setdiff1d(range(0, bases), site_table.position)) #resource for what I'm wanting to do to simulate infinite sites: sample bases without replacement, but ACROSS loops (bases has a replacement parameter, that only works within calls of the function) #https://stackoverflow.com/questions/44507803/in-numpy-how-can-i-randomly-choose-a-number-from-a-range-that-excludes-a-random #need to test to see if it's working properly. range(1, bases is so you're actually getting values up to the integer value you've set as bases (print bases above to check)). 
+            # # print("node:", node, "site chosen from bases:", site)
+            # #add the site to the sites table
+
+            #kevin suggests I figure out a solution to do the above with sets or dictionaries, which should be much faster than comparing arrays, which will scale up linearly, but sets should not. IN addition, you can't just replace the range argument with interval.left and interval.right, as they're not integer and numpy does not appreciate that
+            #try using set differences 
+            possible_bases = set(range((int(interval.left)), int(interval.right))) #set them to integers for now?
+            bases_already_mutated = set(int(i) for i in site_table.position)
+            # print("sites from site table", bases_already_mutated)
+
+            unmutated_sites =(possible_bases.difference(bases_already_mutated)) #get the difference between two sets- it returns only those bases NOT in bases_already_mutated
+            # print("set difference test", x)
+
+            site = random.choice(tuple(unmutated_sites))#suggestion from one stackoverflow entry for this(https://stackoverflow.com/questions/15837729/random-choice-from-set-python) links to another to try to make this process constant time???: https://stackoverflow.com/questions/15993447/python-data-structure-for-efficient-add-remove-and-random-choice
+
+            # print(possible_bases)
+
+
+
+            #####add binary mutations in- 0/1, whether it's been mutated or not. Or could use just two nucleotides, for instance
+            # nucleotides = ["A", "T", "C", "G"] #when I wanted to code them in
+            site_table.add_row(position=site, ancestral_state = "0")
+
+            #####get times for the mutations- randomly select them from the interval between parent and child node times 
             #get the entries from the edges tables that correspond to the nodes you've chosen 
+
+            #get child node time
+            child_time = node_table.time[node]
+            #get parent node time
+            #make the span of that another list you can randomly select from 
 
             # print("node ID", node,  ts.tables.edges.child[node])#https://stackoverflow.com/questions/176918/finding-the-index-of-an-item-in-a-
             
-            for index, j in enumerate(ts.tables.edges.child): #I think the child node is the appropriate one to pick, since we chose nodes BELOW branches. Mutations are associated with the node below them (according to tskit data model page)
+            for index, j in enumerate(edge_table.child): #I think the child node is the appropriate one to pick, since we chose nodes BELOW branches. Mutations are associated with the node below them (according to tskit data model page)
                 # print(index, j) #this print statement coupled with the one below lets you check if it's behaving as intended
                 if j == node:
-                    print("node", node, "index of the node we're calling from the child column", index)
-                    print("node", node, "edges associated with the node", edge_table[index])
+                    entry = edge_table[index]
+                    print("node", node, "edges associated with the node selected", entry)
+                    current_tree_interval = (interval.left, interval.right)
 
-            #each child node may appear more than once in the table, so you may have to just randomly pick between the two, and then report the span of the edges from them to put into the mutation table 
+                    if (entry.left, entry.right) == current_tree_interval: 
+                        parent_node = entry.parent
+                        print("tuple matched, parent node", parent_node)
 
+                    elif (entry.left, entry.right) == (0, bases): #this happens when the node is not associated with a recombination event 
+                        print("this node has the same parent regardless of tree"
+                        )
+                        parent_node=entry.parent
 
-            
-            site =np.random.choice(np.setdiff1d(range(0, bases), site_table.position)) #resource for what I'm wanting to do to simulate infinite sites: sample bases without replacement, but ACROSS loops (bases has a replacement parameter, that only works within calls of the function) #https://stackoverflow.com/questions/44507803/in-numpy-how-can-i-randomly-choose-a-number-from-a-range-that-excludes-a-random #need to test to see if it's working properly. range(1, bases is so you're actually getting values up to the integer value you've set as bases (print bases above to check))
-            # print("node:", node, "site chosen from bases:", site)
-            #add the site to the sites table
-            nucleotides = ["A", "T", "C", "G"]
-            site_table.add_row(position=site, ancestral_state = np.random.choice(nucleotides))
+            #now, find actual parent time:
+            parent_time = node_table.time[parent_node]
+            print("parent time", parent_time)
+            time_span = (child_time, parent_time)
+            print("time interval between a node and its parent", time_span)
+            time=random.choice(time_span) #you get a suspiciously high amount of '0' times. 
 
-
-
-            mut_table.add_row(site=site, node=node, derived_state = np.random.choice(np.setdiff1d(nucleotides, site_table.ancestral_state))) #this doesn't work as with the above-- perhaps something with the strings. 
+            #####assign all variables to the mutations table 
+            mut_table.add_row(site=site, node=node, time=time, derived_state = "1") #this doesn't work as with the above-- perhaps something with the strings. 
             # print(tskit.unpack_strings(site_table.ancestral_state, site_table.ancestral_state_offset))
 
             # print(np.setdiff1d(nucleotides, site_table.ancestral_state))
 
+            
+            print("LOOP BREAK", "\n")
   
 
-        print(ts.tables.edges)
-
+        # print(ts.tables.edges)
+        # print(node_table)
         # print(mut_table)
         # print(site_table)
+        # print(edge_table)
     # print(site_table)
     # print(mut_table)
-    # print(newtables)
+    print(newtables)
     return(newtables)
                 
             #check where that site should go in terms of edges (eg which tree it'll end up falling on)
@@ -672,10 +711,11 @@ add_metadata_to_treefile(newtables)
 
 
 ts.draw_svg("treesequence_visualization.svg")
+print(ts)
 #view tree sequences in-terminal 
-tskit.TableCollection.sort(edge_start=0, self=newtables, site_start=0, mutation_start=0)
-ts = newtables.tree_sequence()
-for t in ts.trees():
-  print(t.draw(format='unicode'))
+# tskit.TableCollection.sort(edge_start=0, self=newtables, site_start=0, mutation_start=0)
+# ts = newtables.tree_sequence()
+# for t in ts.trees():
+#   print(t.draw(format='unicode'))
 
 
