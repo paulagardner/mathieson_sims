@@ -3,6 +3,8 @@ import msprime
 import io
 import demes 
 import numpy as np
+from numpy.random import default_rng
+rng = default_rng()
 import gzip
 import pandas as pd
 import scipy
@@ -18,20 +20,93 @@ import matplotlib.pyplot as plt #if it's just matplotlib, your demesdraw subplot
 import seaborn as sns
 from dataclasses import dataclass
 import random
+import argparse
+
+
+
+# def make_parser() -> argparse.ArgumentParser:
+#     # make an argument parser that can output help.
+#     # The __file__ is the full path to this file
+#     ADHF = argparse.ArgumentDefaultsHelpFormatter
+#     parser = argparse.ArgumentParser(__file__, formatter_class=ADHF)
+
+#     # Add an argument
+#     parser.add_argument("--YAML", type=str, default = None help="Yaml file input")
+#     parser.add_argument(
+#         "--treefile",
+#         "-t",
+#         type=str,
+#         default=None,
+#         help="Tree file output name (tskit format)",
+#     )
+
+
+#     parser.add_argument("--N", type=int, help="Number of individuals")
+
+#     parser.add_argument("--MU", "--u", type=float, help="Mutation rate")
+
+#     parser.add_argument(
+#         "--POPT", type=float, default=0, help="Population optimum trait value"
+#     )
+
+#     parser.add_argument(
+#         "--VS",
+#         type=float,
+#         help="Variance of S, the inverse strength of stabilizing selection",
+#     )
+
+#     parser.add_argument(
+#         "--E_SD",
+#         type=float,
+#         help="Environmental effect distribution's standard deviation",
+#     )
+
+#     parser.add_argument(
+#         "--E_MEAN", type=float, help="Environmental effect distribution's mean"
+#     )
+
+#     return parser
+
+
+# def validate_args(args: argparse.Namespace):
+#     if args.treefile is None:
+#         raise ValueError(f"treefile to be written cannot be None")
+
+#     # if args.seed < 0:
+#     # raise ValueError(f"invalid seed value: {args.seed}")
+
+#     if args.POPT is None:
+#         raise ValueError(f"Population optimum trait value cannot be None")
+
+#     if args.N is None:
+#         raise ValueError(
+#             f"Number of individuals cannot be None"
+#         )  # this was giving me trouble. Error was AttributeError: 'Namespace' object has no attribute 'N'
+
+#     if args.MU is None:
+#         raise ValueError(f"Mutation rate cannot be None")
+
+#     if args.VS is None:
+#         raise ValueError(
+#             f"In this simulation using stabilizing selection, VS cannot be None"
+#         )
 
 demography = msprime.Demography()
 graph = demes.load("pop_split.yaml")
 # graph = demes.load("no_ancestry.yaml")
 graph2 = demes.load("no_ancestry.yaml")
 
-mu = ((1e-7)*20) #normally would have this set to 1e-7 *2, but putting deme size down and #individuals up to be able to visualize tree sequences for working on placing mutations issue 
+mu = (1e-4) #normally would have this set to 1e-7 *2, but putting deme size down and #individuals up to be able to visualize tree sequences for working on placing mutations issue.
 rho = 1e-7
 bases = 1000
+#these values of mu and bases don't make a whole lot of sense re: biology, but the math should work out regardless and this will consistently give you small sims with actual mutations showing up.
 
 
 deme_size = 5 #scaling this to 1000 doesn't affect much 
+
+populations = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table. in this case, you just want the demes of the samples present at the end of the sim. (I think). SO regardless of pop_split.yaml or no_ancestry.yaml (whether ancestry is shared), demes A and B split off.
 def simulate(mu, rho, graph):
-    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=1234, discrete_genome = False) #add random seed so it's replicable
+    ts = msprime.sim_ancestry(demography = msprime.Demography.from_demes(graph), recombination_rate=rho, sequence_length = bases, samples={"A": deme_size, "B": deme_size}, random_seed=3456, discrete_genome = False) #add random seed so it's replicable
     #not including migration info since I'm just doing two demes, so what mathieson et al did (defining which demes are next to each other) not necessary here.. at least for now
     return ts
 
@@ -57,7 +132,18 @@ def mutation_placer():
         branch_lengths = np.zeros(tree.tree_sequence.num_nodes)
         # print(len(branch_lengths))
         dict = {}
+        summed_branch_lengths = 0
         nodes_list = np.zeros(tree.tree_sequence.num_nodes)
+
+        #find the interval the tree exists on 
+        interval = tree.interval 
+        # print("interval of the tree", interval)
+
+        #find the fraction of the total genome this occupies/number of bases
+        span = tree.interval.right-tree.interval.left
+        # print("span of this tree", span)        
+
+        number_mutations = 0
         for node in tree.nodes(): #type error: tree object is not iterable-- this happens w/ you frequently b/c you're forgetting to include the parenthesis to call the method properly, so the code tries to iterate over the method and not the data structure it's referencing 
             
             #add 
@@ -67,38 +153,94 @@ def mutation_placer():
             nodes_list[node] =+ node
             #kevin's suggestion of how to do it- note that you've largely figured it out already in the line above 
         
+
             
+            child_time = node_table.time[node]
+            for index, j in enumerate(edge_table.child): #I think the child node is the appropriate one to pick, since we chose nodes BELOW branches. Mutations are associated with the node below them (according to tskit data model page)
+                # print(index, j) #this print statement coupled with the one below lets you check if it's behaving as intended
+                if j == node:
+                    entry = edge_table[index]
+                    parent = entry.parent
+                    parent_time = node_table.time[parent]
+                    # print("parent time", parent_time, 'node', parent)
+                    branch_length = (parent_time - child_time)
+                    summed_branch_lengths = summed_branch_lengths + branch_length 
+
+                    
+
+                    ####place mutations on nodes proportional to branch lengths, and proportional to how long of a span of the genome a given tree occupies
+                    lineage_mutations = ((rng.poisson(lam=(mu*branch_length*(span/bases)))))  #my idea to populate the sim with the expected number of mutations given the parameters I'm using: get mu * t in here, after the hudson 2015 paper having lineage mu * branch length be the number of mutations occuring along that lineage. Summing them all up to get expectations for each tree. I'm multiplying by the fraction of the genome, since I believe mu* branch length as the expectation for the # of mutations assumes the whole genome
+
+
+                    #i'm choosing here to use expectations I see in the hudson (2015) and, ultimately, waterson (1975) around mu to be per-base, instead of per-gene (which is what the waterson paper specifies). Come back to this to see if that is justifiable, but I feel that the hudson math should work for per-base instead of per-gene as both should be poisson processes, and whatever way I get to number of mutations, if I have the # of mutations right the SFS should work out
+                    number_mutations += lineage_mutations
+
+                    # print("number of mutations expected to go on this node", lineage_mutations)
+            
+
+        print("total number of mutations that should happen on this tree", number_mutations)
+        print("fraction of the genome this tree occupies", span/bases)
+                # time_span = (child_time, parent_time)
             #get branch lengths as a proportion of total
-            proportional_branch_lengths = branch_lengths/tree.total_branch_length
+            # child_time = node_table.time
+            # print("child time", child_time)
+            # entry = edge_table[node]
+            # parent_node = entry.parent
+           
+            # print("parent time", parent)
+        print("summed branch lengths:", summed_branch_lengths)
+        # total_branch_length = sum(tree.branch_length(u) for u in tree.nodes()) #https://tskit.dev/tutorials/analysing_trees.html note how this compares to the summed branch length
+        # print(f"Total branch length: {total_branch_length}")
+        proportional_branch_lengths = branch_lengths/summed_branch_lengths 
+        # print(proportional_branch_lengths)
 
 
-        #randomly sample nodes according to the branch lengths above them 
+
+
+        
+
+        
+
+
+        #randomly sample nodes according to the branch lengths above them F
         #to do that, I'll need to have k (the number of draws numpy.choice/choices is making) specified by a probability distribution that takes in mutation rate
         #mu is from above
         # print("size of distribution", mu*bases)
-        #conceptually: the probability of a mutation happening, look at coalescent theory book
-        nodes_sampled =  np.random.choice(nodes_list, p=proportional_branch_lengths, size = 3) #this can sample the same node twice, which IS what you want. however need to figure out a way to determine which parent node was associated with a given branch length, so you can select a site that makes sense given the edges possible for a child:parent node relationship 
-        
+
+        p = np.asarray(proportional_branch_lengths).astype('float64')
+        p = p/np.sum(p) #not sure if doing this as a workaround to the proportional branch lengths array not summing to 0 is the best idea, but to get it working for now
+        # print("probabilities",p, "sums", sum(p))
+
+        #####you need to determine the size parameter using the mutation rate, the span of the tree that the mutations are happening on (and how large of a fraction of the bases that is)
+        #notes from meeting: the mu that I'm normally thinking of is a per base pair mean, so you'll want to have a mean number of mutations:
+
+        #mu, in terms of the values you're used to, is a per-base mutation rate. 
+        #number of mutataions on any one branch 
+        # number_mutations = np.random.poisson(lam=(mu*bases*))
+        # print("NUMBER MUTATIONS", number_mutations) #this is a smaller number than what the msprime sim gives you- figure out why 
+
+        #number of mutations: u times the EXPECTED sum of lengths of the branches of the tree-- equation 4 from the hudson paper, aka theta times the sum from i to n-1 of 1/i, i being the number of branches???
+
+
+        #mutation rate according to span:
+        # for 
+
+
+        nodes_sampled =  rng.choice(nodes_list, p=p, size = int(number_mutations)) #this can sample the same node twice, which IS what you want. however need to figure out a way to determine which parent node was associated with a given branch length, so you can select a site that makes sense given the edges possible for a child:parent node relationship 
+        # nodes_sampled =  np.random.choice(nodes_list, p=p, size = np.random.choice(expected mutations))
+
         nodes_sampled = nodes_sampled.astype(int) ##these need to be integers to be able to use them to access indices/values in the edge table. See if you can make it such when the  variable is created 
         # print("nodes sampled from distribution", nodes_sampled)
 
+
+
         #pick out the spot in the genome that the tree we have iterated over actually occupies (with edges) 
 
-        print("interval this tree occupies", tree.interval)
-        interval = tree.interval #access this to pick which sites are possible
-        # leftint= tree.interval(left)
-        # rightint= tree.interval(right)
-        # print(ts.tables.edges)
-        print(interval)
+        print("interval this tree occupies", tree.interval) #access this to pick which sites are possible
         # print("left side of interval", interval.left)
-        for node in nodes_sampled:
+        for node in nodes_sampled: #since I do a pretty much identical thing above, there's gotta be a way to combine the two, but I'll leave the stunts for later 
             ######draw a site from the genome that HASN'T ALREADY had a mutation assigned to it. (can probably skip making the sites infinite for now)
             #use these nodes to write mutations to the mutations table
-            # print(ts.tables.mutations)
-            
-            # site =np.random.choice(np.setdiff1d(range(0, bases), site_table.position)) #resource for what I'm wanting to do to simulate infinite sites: sample bases without replacement, but ACROSS loops (bases has a replacement parameter, that only works within calls of the function) #https://stackoverflow.com/questions/44507803/in-numpy-how-can-i-randomly-choose-a-number-from-a-range-that-excludes-a-random #need to test to see if it's working properly. range(1, bases is so you're actually getting values up to the integer value you've set as bases (print bases above to check)). 
-            # # print("node:", node, "site chosen from bases:", site)
-            # #add the site to the sites table
 
             #kevin suggests I figure out a solution to do the above with sets or dictionaries, which should be much faster than comparing arrays, which will scale up linearly, but sets should not. IN addition, you can't just replace the range argument with interval.left and interval.right, as they're not integer and numpy does not appreciate that
             #try using set differences 
@@ -120,36 +262,31 @@ def mutation_placer():
             site_table.add_row(position=site, ancestral_state = "0")
 
             #####get times for the mutations- randomly select them from the interval between parent and child node times 
-            #get the entries from the edges tables that correspond to the nodes you've chosen 
 
             #get child node time
             child_time = node_table.time[node]
-            #get parent node time
-            #make the span of that another list you can randomly select from 
-
             # print("node ID", node,  ts.tables.edges.child[node])#https://stackoverflow.com/questions/176918/finding-the-index-of-an-item-in-a-
             
             for index, j in enumerate(edge_table.child): #I think the child node is the appropriate one to pick, since we chose nodes BELOW branches. Mutations are associated with the node below them (according to tskit data model page)
                 # print(index, j) #this print statement coupled with the one below lets you check if it's behaving as intended
                 if j == node:
                     entry = edge_table[index]
-                    print("node", node, "edges associated with the node selected", entry)
+                    # print("node", node, "edges associated with the node selected", entry)
                     current_tree_interval = (interval.left, interval.right)
 
                     if (entry.left, entry.right) == current_tree_interval: 
                         parent_node = entry.parent
-                        print("tuple matched, parent node", parent_node)
+                        # print("tuple matched, parent node", parent_node)
 
                     elif (entry.left, entry.right) == (0, bases): #this happens when the node is not associated with a recombination event 
-                        print("this node has the same parent regardless of tree"
-                        )
+                        # print("this node has the same parent regardless of tree")
                         parent_node=entry.parent
 
             #now, find actual parent time:
             parent_time = node_table.time[parent_node]
-            print("parent time", parent_time)
+            # print("parent time", parent_time)
             time_span = (child_time, parent_time)
-            print("time interval between a node and its parent", time_span)
+            # print("time interval between a node and its parent", time_span)
             time=random.choice(time_span) #you get a suspiciously high amount of '0' times. 
 
             #####assign all variables to the mutations table 
@@ -158,102 +295,25 @@ def mutation_placer():
 
             # print(np.setdiff1d(nucleotides, site_table.ancestral_state))
 
-            
-            print("LOOP BREAK", "\n")
-  
 
-        # print(ts.tables.edges)
-        # print(node_table)
-        # print(mut_table)
-        # print(site_table)
-        # print(edge_table)
-    # print(site_table)
-    # print(mut_table)
+        
+
+    print("LOOP BREAK", "\n")
+  
+    expected_sfs = []
+    theta = 4*(populations*deme_size)*(mu)
+    for i in range(1,10):
+        expected_sfs.append(theta/i)
+    print("Expected site frequency spectrum", expected_sfs)
+    # simulated_sfs = []
+    # a = ts.allele_frequency_spectrum(sample_sets=[ts.samples(population=1), ts.samples(population=2)], windows=None, mode='site', span_normalise=True, polarised=False)
+    # print("allele frequency spectrum function", a)
+
+
+    # ts = newtables.tree_sequence()
     print(newtables)
     return(newtables)
-                
-            #check where that site should go in terms of edges (eg which tree it'll end up falling on)
 
-
-           
-
-            #conceptually: a way to add rows
-            #mut_table.add_row(site=(randomly select a site from the span of this tree's 'genome without replacement), node=node, derived_state=(randomly select what the derived state is), parent=NULL, metadata=None, time=(select a time interval on the branch length)) 
-            # site = #randomly sample between left and right edges 
-
-            #may also need to figure out (from theory) if branch lengths should be affecting mutation effect sizes 
-            
-
-
-
-
-         
-        #write that to the mutations table to actually have the mutations
-        
-        # print("normalized branch lengths", proportional_branch_lengths)
-        
-        # print(branch_lengths)
-
-
-    # for t in ts.trees():
-    #     print(t)
-    #     print(type(t))
-    #     # t.branch_length(x) 
-
-
-#make a vcf that will have each row signifying a mutation. (thus it's keeping track of the same info as make_phenotypes does: accounting for which individuals have which mutations, and how many copies)
-# def make_vcf(vcf_path, indv_names):
-#     with open(vcf_path, "w") as vcf_file:  
-#         ts.write_vcf(vcf_file, individual_names=indv_names) 
-
-#     #isolate each part of the vcf so you can collect all the elements and write a vcf from it, with ID fields
-#     #get column headers
-#     with open(vcf_path, 'r') as f:
-#         lines = [l for l in f if not l.startswith('##')] 
-        
-#         df = pd.read_csv(io.StringIO(''.join(lines)),
-#         dtype={'#CHROM': str, 'POS': int, 'ID': str, 'REF': str, 'ALT': str,
-#             'QUAL': str, 'FILTER': str, 'INFO': str},
-#             sep='\t')#.rename(columns={'#CHROM': 'CHROM'}) #do not want to rename this! Plink2 is very unhappy if you take the # away. 
-    
-    
-#     #isolate header info rows
-#     with open(vcf_path, 'r') as vcf_file:
-#         header = [l for l in vcf_file if l.startswith('##')]
-    
-#     header =''.join(header)
-
-#     # print(header)
-
-#     #make an id for all mutations
-#     id  = ["rs" + str(i) for i in range(len(ts.tables.mutations))] #calling it rs _ because i see it that way on other VCF
-
-#     #replace the vcf ID column with new IDs
-#     df['ID'] = id
-#     # print(df)
-
-#     blankIndex=[''] * len(df)
-#     df.index=blankIndex
-#     # print(df)
-
-#     with open(vcf_path, 'w') as vcf: #this is almost correct but the headers don't work
-#         vcf.write(header)#use this instead of df.to_csv because that will sometimes mess up your column headers
-#     df.to_csv(vcf_path, sep="\t", mode='a', index=False)#if this is indented in with_open() sometimes mess up your column headers
-
-
-
-    
-
-
-        # for ts.nodes in tree:
-        #     print(nodes)
-    # for tree in ts.trees():
-    #     print(ts.nodes)
-        # print(tree.nodes)
-        # nodes = nodes.id
-        # # for node in tree:
-        # #     print(node)
-        # print(nodes)
 
 
 
@@ -420,29 +480,8 @@ class phenotype_constructor:
         # print("PHENOTYPES",phenotypes_array) 
 
 
-
 def make_phenotypes():
     return phenotype_constructor()
-
-
-# def make_popfile(phenotypes_array):
-
-#     deme_id=[[i]*deme_size for i in range(0,demes)] #https://github.com/Arslan-Zaidi/popstructure/blob/master/code/simulating_genotypes/grid/generate_genos_grid.py
-#     #flatten
-#     deme_id=[item for sublist in deme_id for item in sublist] #changes 2 arrays of, say, length 50 into one array of length 100 (for example, will vary depending on deme # and sample sizes)). Necessary to make the array the correct size for the below 
-
-#     # phenotypes_array = constructor.phenotypes
-#     txt_name = "pop.txt"
-
-#     pheno_1, pheno_2 = phenotypes_array.T #https://stackoverflow.com/questions/30820962/splitting-columns-of-a-numpy-array-easily
-#     popdf = np.transpose([fid, iid, deme_id, pheno_1, pheno_2]) 
-#     # print(popdf)
-#     with open(txt_name, 'wb') as f:
-#         f.write(b'FID\tIID\tdeme_id\tphenotype1\tphenotype2\n') 
-#         np.savetxt(f, popdf, fmt = '%s') #why %s? https://stackoverflow.com/questions/48230230/typeerror-mismatch-between-array-dtype-object-and-format-specifier-18e
-
-#     return popdf
-#     return phenotypes_array
 
 
 def add_metadata_to_treefile(newtables):
@@ -652,7 +691,11 @@ def add_metadata_to_treefile(newtables):
 #check that the YAML is doing what you'd expect:
 ax = demesdraw.tubes(graph2)
 ax.title.set_text('no ancestry')
-ax.figure.savefig("A.svg")
+ax.figure.savefig("no_ancestry.svg")
+
+ax = demesdraw.tubes(graph)
+ax.title.set_text('population split')
+ax.figure.savefig("pop_split.svg")
 
 #attempt to plot them side-by side
 # fig, (ax1, ax2) = plt.subplots(1,2)
@@ -672,14 +715,23 @@ ax.figure.savefig("A.svg")
 
 
 print("simulating genotypes under demographic model")
+
 ts = simulate(mu, rho, graph) #NOTE: not the ts WITHIN def(simulate), or mts. new variable for the tree sequence containing mutations. The function returns mts, which you've renamed back to ts for simplicity (it's the tree sequence to be used in the rest of the file)
-# print(ts.tables)
-
-print("writing treefile for downstream analysis")
-ts.dump("output.trees")
-
+# print(ts) #there's no sites on the original ts
 
 newtables = mutation_placer()
+# print(newtables)
+# newtables.sort() #https://tskit.dev/tutorials/tables_and_editing.html
+# tskit.TableCollection.sort(self=newtables)
+
+new_ts = newtables.tree_sequence()
+print(new_ts)
+
+print("writing treefile for downstream analysis")
+new_ts.dump("output.trees")
+
+
+
 
 # print("making vcf for the sim") #hopefully not necessary 
 # vcf_path = "genos.vcf"
@@ -688,10 +740,9 @@ n_dip_indv = int(ts.num_samples / 2)
 # make_vcf(vcf_path, indv_names)
 
 
-demes = 2 # replace hard-coded with argparser or taking the 'populations' value from the tskit table. in this case, you just want the demes of the samples present at the end of the sim. (I think). SO regardless of pop_split.yaml or no_ancestry.yaml (whether ancestry is shared), demes A and B split off.
 
-fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))]
-iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*demes))] #number of individuals in the sample
+fid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*populations))]
+iid=[f"tsk_{str(i)}indv" for i in range(0,(deme_size*populations))] #number of individuals in the sample
 print("simulating phenotypes from environmental and genetic effects")
 
 
@@ -711,11 +762,11 @@ add_metadata_to_treefile(newtables)
 
 
 ts.draw_svg("treesequence_visualization.svg")
-print(ts)
-#view tree sequences in-terminal 
+print("tree sequence data:","\n", new_ts)
+#view trees in-terminal 
 # tskit.TableCollection.sort(edge_start=0, self=newtables, site_start=0, mutation_start=0)
 # ts = newtables.tree_sequence()
-# for t in ts.trees():
+# for t in new_ts.trees():
 #   print(t.draw(format='unicode'))
 
 
