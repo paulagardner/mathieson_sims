@@ -11,7 +11,6 @@ import scipy
 from scipy import stats
 from scipy.stats import norm
 from scipy.stats import multivariate_normal
-from numpy.random import default_rng
 import tskit
 from itertools import groupby
 import json
@@ -423,7 +422,8 @@ class phenotype_constructor:
             #loop over all mutations that appear in a tree
             for mutation in tree.mutations():
                 # print("newline every time we loop over a new mutation", "\n")
-                # print("mutation id", mutation.id)
+                print("mutation id", mutation.id)
+
                 nodes = mutation.node
                 # print("node the mutation originates from:", nodes)
                 #alternate way to get the above:
